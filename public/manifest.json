@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "LayerTune",
+  "version": "1.0",
+  "description": "Highlight and switch semantic and div elements on web pages",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["contentScript.js"],
+      "css": ["styles/global.css", "styles/style.css"]
+    }
+  ],
+  "permissions": ["activeTab", "tabs"]
+}

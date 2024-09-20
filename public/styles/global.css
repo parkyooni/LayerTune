@@ -1,0 +1,6 @@
+:root {
+  --border-color: #00ff00;
+  --dragging-bg-color: rgba(0, 255, 0, 0.5);
+  --transition-duration: 0.3s;
+  --transition-timing: ease;
+}

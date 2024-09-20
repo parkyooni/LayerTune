@@ -1,0 +1,28 @@
+# Dependencies
+/node_modules
+
+# Production build folder
+/dist
+
+# dotenv
+.env
+
+# Logs
+npm-debug.log*
+*.log
+
+# Editor directories and files
+.idea/
+.idea
+.vscode/
+.vscode
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Browser extensions specific
+*.pem
+*.crx
