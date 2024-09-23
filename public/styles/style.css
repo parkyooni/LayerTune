@@ -1,0 +1,111 @@
+.extension-popup {
+  width: 18.75rem;
+  padding: 0.625rem;
+  background-color: var(--popup-color);
+  font-family: Arial, sans-serif;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+span.logo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--font-color);
+}
+
+span.logo img {
+  margin-right: 0.3125rem;
+}
+
+button {
+  padding: 0.625rem;
+  color: var(--font-color);
+  border: 1px solid var(--font-color);
+  border-radius: 0.3125rem;
+  background-color: var(--font-color-white);
+  cursor: pointer;
+}
+
+#toggleLogin {
+  width: 100%;
+}
+
+.tab-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.625rem;
+}
+
+.tab-button {
+  flex: 1;
+  background-color: var(--popup-color);
+  color: var(--font-color);
+}
+
+.tab-button.active {
+  background-color: var(--border-color);
+  color: var(--font-color);
+}
+
+.custom-list {
+  border: 1px solid var(--border-color);
+  padding: 10px;
+  max-height: 12.5rem;
+  overflow-y: auto;
+}
+
+#editControls {
+  display: flex;
+  justify-content: space-between;
+}
+
+#editControls button {
+  flex: 1;
+  margin: 0 0.3125rem;
+}
+
+#toggleHighlight {
+  background-color: #a78f8f;
+}
+
+.highlight-border {
+  outline: 1px dashed var(--border-layer-color);
+  cursor: move;
+  background-color: var(--dragging-bg-color);
+  transition:
+    background-color var(--transition-duration) var(--transition-timing),
+    border-color var(--transition-duration) var(--transition-timing);
+}
+
+.highlight-border.dragging {
+  background-color: var(--dragging-bg-color);
+}
+
+.popup {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--background-opctiy);
+}
+
+.popup-content {
+  width: 80%;
+  margin: 15% auto;
+  padding: 1.25rem;
+  border-radius: 0.3125rem;
+  background-color: var(--font-color-white);
+}
+
+#customName {
+  width: 100%;
+  margin-bottom: 0.625rem;
+  padding: 0.3125rem;
+}

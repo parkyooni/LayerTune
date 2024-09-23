@@ -1,6 +1,11 @@
 :root {
-  --border-color: #00ff00;
-  --dragging-bg-color: rgba(0, 255, 0, 0.5);
+  --popup-color: #efefef;
+  --border-layer-color: #62a2ff;
+  --font-color: #333333;
+  --font-color-white: #ffffff;
+  --border-color: #dddddd;
+  --background-opctiy: rgba(0, 0, 0, 0.5);
+  --dragging-bg-color: rgba(0, 123, 255, 0.1);
   --transition-duration: 0.3s;
   --transition-timing: ease;
 }
