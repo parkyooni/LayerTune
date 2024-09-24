@@ -1,6 +1,38 @@
-.extension-popup {
-  width: 18.75rem;
+:root {
+  --popup-color: #efefef;
+  --border-layer-color: #62a2ff;
+  --font-color: #333333;
+  --font-color-white: #ffffff;
+  --border-color: #dddddd;
+  --point-color: #a78f8f;
+  --disabled-color: #a0a0a0;
+  --background-opctiy: rgba(0, 0, 0, 0.5);
+  --dragging-bg-color: rgba(0, 123, 255, 0.1);
+  --transition-duration: 0.3s;
+  --transition-timing: ease;
+}
+
+ul,
+li {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+button {
   padding: 0.625rem;
+  border: none;
+  cursor: pointer;
+  transition:
+    opacity var(--transition-duration) var(--transition-timing),
+    background-color var(--transition-duration) var(--transition-timing);
+}
+
+body.extension-popup {
+  width: 21.875rem;
+  min-height: 18.75rem;
+  margin: 0;
+  padding: 0;
   background-color: var(--popup-color);
   font-family: Arial, sans-serif;
 }
@@ -8,69 +40,140 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 10px;
 }
 
-span.logo {
+.header {
+  box-sizing: border-box;
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  height: 3.125rem;
+  padding: 0 0.9375rem;
+  background-color: var(--font-color-white);
+}
+
+.header span.logo {
+  display: flex;
+  justify-content: flex-start;
   align-items: center;
   color: var(--font-color);
+  cursor: default;
 }
 
-span.logo img {
+.header span.logo img {
+  width: 1.875rem;
   margin-right: 0.3125rem;
 }
 
-button {
-  padding: 0.625rem;
-  color: var(--font-color);
-  border: 1px solid var(--font-color);
+.header #toggleLogin {
+  padding: 0.3125rem 0.625rem;
   border-radius: 0.3125rem;
-  background-color: var(--font-color-white);
-  cursor: pointer;
+  color: var(--font-color-white);
+  background-color: var(--point-color);
 }
 
-#toggleLogin {
-  width: 100%;
+.content {
+  padding: 0.625rem;
 }
 
-.tab-buttons {
+.content #customListTab .tab-buttons {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 0.625rem;
 }
 
-.tab-button {
+.content #customListTab .tab-buttons .tab-button {
   flex: 1;
+  width: calc(100% - 0.625rem);
+  border-radius: 0.3125rem 0.3125rem 0 0;
   background-color: var(--popup-color);
+  border: 1px solid var(--border-color);
+  border-bottom: none;
   color: var(--font-color);
 }
 
-.tab-button.active {
-  background-color: var(--border-color);
-  color: var(--font-color);
+.content #customListTab .tab-buttons .tab-button.active {
+  background-color: var(--point-color);
+  color: var(--font-color-white);
 }
 
-.custom-list {
+.content #customListTab .tab-content .custom-list {
+  min-height: 6.25rem;
   border: 1px solid var(--border-color);
   padding: 10px;
   max-height: 12.5rem;
   overflow-y: auto;
 }
 
-#editControls {
+.content #editControls {
+  display: flex;
+}
+
+.content #editControls button {
+  flex: 1;
+}
+
+.content #editControls button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #f0f0f0;
+}
+
+.content #editControls button span {
+  padding-left: 0.1875rem;
+}
+
+.content .toggle-switch {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  padding: 0.625rem;
+  border-top: 1px solid var(--border-color);
+  gap: 10px;
 }
 
-#editControls button {
-  flex: 1;
-  margin: 0 0.3125rem;
+.content .toggle-switch input[type="checkbox"] {
+  display: none;
 }
 
-#toggleHighlight {
-  background-color: #a78f8f;
+.content .toggle-switch .switch-label {
+  position: relative;
+  display: inline-block;
+  width: 3rem;
+  height: 1.5rem;
+  background-color: #ddd;
+  border-radius: 1rem;
+  cursor: pointer;
+  transition: background-color var(--transition-duration)
+    var(--transition-timing);
+}
+
+.content .toggle-switch .switch-label .switch-inner {
+  position: absolute;
+  top: 0.25rem;
+  left: 0.25rem;
+  width: 1rem;
+  height: 1rem;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform var(--transition-duration) var(--transition-timing);
+}
+
+.content
+  .toggle-switch
+  input[type="checkbox"]:checked
+  + .switch-label
+  .switch-inner {
+  transform: translateX(1.5rem);
+}
+
+.content .toggle-switch input[type="checkbox"]:checked + .switch-label {
+  background-color: var(--point-color);
+}
+
+.content #toggleHighlightLabel {
+  font-size: 1rem;
+  color: var(--font-color);
 }
 
 .highlight-border {
@@ -108,4 +211,8 @@ button {
   width: 100%;
   margin-bottom: 0.625rem;
   padding: 0.3125rem;
+}
+
+#editControls li button:disabled {
+  color: var(--disabled-color);
 }

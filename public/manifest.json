@@ -22,8 +22,9 @@
     {
       "matches": ["<all_urls>"],
       "js": ["contentScript.js"],
-      "css": ["styles/global.css", "styles/style.css"]
+      "css": ["styles/style.css"]
     }
   ],
-  "permissions": ["activeTab", "tabs"]
+  "permissions": ["activeTab", "tabs", "identity", "storage"],
+  "host_permissions": ["https://*.google.com/"]
 }

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LayerTune Popup</title>
+    <link rel="stylesheet" href="styles/style.css" />
+    <script type="text/javascript" src="index.js"></script>
+  </head>
+
+  <body class="extension-popup">
+    <div class="container">
+      <div class="header">
+        <span class="logo">
+          <img src="icons/icon48.png" alt="logo" />
+          <span>LayerTune</span>
+        </span>
+        <div id="userInfo" style="display: none">
+          <span id="userName"></span>
+          <button id="logoutButton">로그아웃</button>
+        </div>
+        <button id="toggleLogin">로그인</button>
+      </div>
+
+      <div class="content">
+        <div id="customListTab">
+          <div class="tab-buttons">
+            <button class="tab-button active" data-tab="currentUrl">
+              현재 커스텀 링크
+            </button>
+            <button class="tab-button" data-tab="allCustom">커스텀 링크</button>
+          </div>
+          <div class="tab-content">
+            <div id="currentUrlList" class="custom-list"></div>
+            <div
+              id="allCustomList"
+              class="custom-list"
+              style="display: none"
+            ></div>
+          </div>
+        </div>
+
+        <ul id="editControls">
+          <li>
+            <button id="undoButton" title="되돌리기 (Ctrl + Z)">
+              되돌리기<span>Ctrl + Z</span>
+            </button>
+          </li>
+          <li>
+            <button id="resetButton" title="초기화 (Ctrl + R)">
+              초기화<span>Ctrl + R</span>
+            </button>
+          </li>
+          <li>
+            <button id="saveButton" title="저장 (Ctrl + S)">
+              저장<span>Ctrl + S</span>
+            </button>
+          </li>
+        </ul>
+
+        <div class="toggle-switch">
+          <span id="toggleHighlightLabel">하이라이트</span>
+          <input type="checkbox" id="toggleHighlightSwitch" />
+          <label for="toggleHighlightSwitch" class="switch-label">
+            <span class="switch-inner"></span>
+            <span class="switch-button"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div id="savePopup" class="popup">
+      <div class="popup-content">
+        <h3>커스텀 저장</h3>
+        <input type="text" id="customName" placeholder="커스텀 이름 입력" />
+        <button id="confirmSave">저장</button>
+        <button id="cancelSave">취소</button>
+      </div>
+    </div>
+  </body>
+</html>
