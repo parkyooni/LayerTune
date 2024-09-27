@@ -26,5 +26,5 @@
     }
   ],
   "permissions": ["activeTab", "tabs", "identity", "storage"],
-  "host_permissions": ["https://*.google.com/"]
+  "host_permissions": ["https://*.google.com/", "http://localhost/*"]
 }
