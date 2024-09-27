@@ -1,6 +1,10 @@
 const path = require("path");
 const CopyPlugin = require("copy-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
+const webpack = require("webpack");
+const dotenv = require("dotenv").config({
+  path: path.join(__dirname, ".env"),
+});
 
 module.exports = {
   mode: "production",
@@ -35,6 +39,9 @@ module.exports = {
       template: "./src/popup/index.html",
       filename: "popup.html",
       chunks: ["popup"],
+    }),
+    new webpack.DefinePlugin({
+      "process.env": JSON.stringify(dotenv.parsed),
     }),
   ],
 };
