@@ -12,8 +12,37 @@
     "default_popup": "popup.html"
   },
   "background": {
-    "service_worker": "background.js",
-    "type": "module"
+    "service_worker": "background.js"
+  },
+  "commands": {
+    "undo": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Z",
+        "mac": "Command+Shift+Z"
+      },
+      "description": "Undo last action"
+    },
+    "reset": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+R",
+        "mac": "Command+Shift+R"
+      },
+      "description": "Reset all changes"
+    },
+    "save": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "Save changes"
+    }
+  },
+  "oauth2": {
+    "client_id": "644829760929-9p60bpemvbkbkttnfdbtqq7l39h961ms.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile"
+    ]
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
@@ -25,6 +54,19 @@
       "css": ["styles/style.css"]
     }
   ],
-  "permissions": ["activeTab", "tabs", "identity", "storage"],
-  "host_permissions": ["https://*.google.com/", "http://localhost/*"]
+  "permissions": [
+    "scripting",
+    "tabs",
+    "identity",
+    "storage",
+    "clipboardWrite",
+    "commands"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "https://specific-site.com/*",
+    "https://accounts.google.com/",
+    "https://www.googleapis.com/",
+    "http://localhost:5000/"
+  ]
 }

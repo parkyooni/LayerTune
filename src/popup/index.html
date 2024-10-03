@@ -57,31 +57,29 @@
             <div id="currentUrlList" class="custom-list">
               <div class="loading-spinner" id="loadingSpinnerCurrent"></div>
               <div class="layer-items-container"></div>
-              <div class="pagination"></div>
             </div>
 
             <div id="allCustomList" class="custom-list" style="display: none">
               <div class="loading-spinner" id="loadingSpinnerAll"></div>
               <div class="layer-items-container"></div>
-              <div class="pagination"></div>
             </div>
           </div>
         </div>
 
         <ul id="editControls">
           <li>
-            <button id="undoButton" title="Ctrl + Z">
-              되돌리기<span>(Ctrl+Z)</span>
+            <button id="undoButton" title="Ctrl+Shift+Z/⌘+⇧+Z">
+              되돌리기<span>(Ctrl+Shift+Z/⌘+⇧+Z)</span>
             </button>
           </li>
           <li>
-            <button id="resetButton" title="Ctrl + R">
-              초기화<span>(Ctrl+R)</span>
+            <button id="resetButton" title="Ctrl+Shift+R/⌘+⇧+R">
+              초기화<span>(Ctrl+Shift+R/⌘+⇧+R)</span>
             </button>
           </li>
           <li>
-            <button id="saveButton" title="Ctrl + S">
-              저장<span>(Ctrl+S)</span>
+            <button id="saveButton" title="Ctrl+Shift+S/⌘+⇧+S">
+              저장<span>(Ctrl+Shift+S/⌘+⇧+S)</span>
             </button>
           </li>
         </ul>
@@ -103,6 +101,15 @@
         <input type="text" id="customName" placeholder="커스텀 이름 입력" />
         <button id="confirmSave">저장</button>
         <button id="cancelSave">취소</button>
+      </div>
+    </div>
+
+    <div id="deleteConfirmPopup" class="popup">
+      <div class="popup-content">
+        <h3>삭제 확인</h3>
+        <p>정말로 이 레이어를 삭제하시겠습니까?</p>
+        <button id="confirmDelete">삭제</button>
+        <button id="cancelDelete">취소</button>
       </div>
     </div>
   </body>
