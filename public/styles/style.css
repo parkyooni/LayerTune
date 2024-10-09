@@ -175,6 +175,10 @@ body.extension-popup {
   flex-direction: column;
 }
 
+.custom-list li.active {
+  background-color: var(--point-color);
+}
+
 .layer-items-container {
   flex-grow: 1;
   overflow-y: auto;

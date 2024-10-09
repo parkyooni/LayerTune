@@ -28,6 +28,11 @@ document.addEventListener("DOMContentLoaded", () => {
     saveButton.disabled = !(loggedIn && domChanged);
   }
 
+  function clearActiveClassFromList() {
+    const listItems = document.querySelectorAll("#currentUrlList li");
+    listItems.forEach((item) => item.classList.remove("active"));
+  }
+
   function updateLayerHighlight(isActive) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       chrome.scripting.executeScript({
@@ -237,69 +242,67 @@ document.addEventListener("DOMContentLoaded", () => {
   function loadSavedLayers() {
     if (!userId) return;
 
-    fetch(
-      `http://localhost:5000/api/layers/url/${encodeURIComponent(currentUrl)}?userId=${userId}`
-    )
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("404 Not Found");
-        }
-        return response.json();
-      })
-      .then((layers) => {
-        const currentUrlList = document.getElementById("currentUrlList");
-        currentUrlList.innerHTML = "";
-        if (layers.length === 0) {
-          currentUrlList.innerHTML = "<p>저장된 레이어가 없습니다.</p>";
-        } else {
-          layers.forEach((layer) => {
-            const li = document.createElement("li");
-            li.textContent = layer.customName;
-            const deleteIcon = document.createElement("img");
-            deleteIcon.src = "icons/delete_icon.png";
-            deleteIcon.addEventListener("click", () => {
-              deleteConfirmPopup.style.display = "block";
-              layerToDelete = layer._id;
-            });
-            li.appendChild(deleteIcon);
-            currentUrlList.appendChild(li);
-          });
-        }
-      })
-      .catch((error) => {
-        console.error("Error loading current custom links:", error);
-      });
+    function fetchLayers(apiUrl, listElementId, emptyMessage) {
+      return fetch(apiUrl)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("404 Not Found");
+          }
+          return response.json();
+        })
+        .then((layers) => {
+          const listElement = document.getElementById(listElementId);
+          listElement.innerHTML = "";
+          if (layers.length === 0) {
+            listElement.innerHTML = `<p>${emptyMessage}</p>`;
+          } else {
+            layers.forEach((layer) => {
+              const li = document.createElement("li");
+              li.textContent =
+                listElementId === "currentUrlList"
+                  ? layer.customName
+                  : `${layer.customName} (${layer.url})`;
 
-    fetch(`http://localhost:5000/api/layers/google/${userId}`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("404 Not Found");
-        }
-        return response.json();
-      })
-      .then((layers) => {
-        const allCustomList = document.getElementById("allCustomList");
-        allCustomList.innerHTML = "";
-        if (layers.length === 0) {
-          allCustomList.innerHTML = "<p>저장된 레이어가 없습니다.</p>";
-        } else {
-          layers.forEach((layer) => {
-            const li = document.createElement("li");
-            li.textContent = `${layer.customName} (${layer.url})`;
-            const deleteIcon = document.createElement("img");
-            deleteIcon.src = "icons/delete_icon.png";
-            deleteIcon.addEventListener("click", () => {
-              deleteConfirmPopup.style.display = "block";
-              layerToDelete = layer._id;
+              li.addEventListener("click", () => {
+                console.log("레이어 클릭됨: ", layer);
+
+                clearActiveClassFromList();
+                li.classList.add("active");
+
+                chrome.tabs.query(
+                  { active: true, currentWindow: true },
+                  (tabs) => {
+                    chrome.tabs.sendMessage(tabs[0].id, {
+                      action: "applySavedDOM",
+                      modifiedDOMSnapshot: layer.modifiedDOMSnapshot,
+                      elementChanges: layer.elementChanges,
+                    });
+                  }
+                );
+              });
+
+              const deleteIcon = document.createElement("img");
+              deleteIcon.src = "icons/delete_icon.png";
+              deleteIcon.addEventListener("click", () => {
+                deleteConfirmPopup.style.display = "block";
+                layerToDelete = layer._id;
+              });
+
+              li.appendChild(deleteIcon);
+              listElement.appendChild(li);
             });
-            li.appendChild(deleteIcon);
-            allCustomList.appendChild(li);
-          });
-        }
-      })
-      .catch((error) => {
-        console.error("Error loading all custom links:", error);
-      });
+          }
+        })
+        .catch((error) => {
+          console.error(`Error loading layers from ${apiUrl}:`, error);
+        });
+    }
+
+    const currentUrlApi = `http://localhost:5000/api/layers/url/${encodeURIComponent(currentUrl)}?userId=${userId}`;
+    fetchLayers(currentUrlApi, "currentUrlList", "저장된 레이어가 없습니다.");
+
+    const allCustomApi = `http://localhost:5000/api/layers/google/${userId}`;
+    fetchLayers(allCustomApi, "allCustomList", "저장된 레이어가 없습니다.");
   }
 
   function showLoginMessage() {

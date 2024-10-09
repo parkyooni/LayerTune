@@ -362,4 +362,45 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "saveDOMChanges") {
     saveDOMChanges(request.customName, request.userId);
   }
+
+  if (request.action === "applySavedDOM") {
+    const { modifiedDOMSnapshot, elementChanges } = request;
+
+    if (modifiedDOMSnapshot) {
+      document.documentElement.innerHTML = modifiedDOMSnapshot;
+    }
+
+    elementChanges.forEach((change) => {
+      const element = document.evaluate(
+        change.newPosition.XPath,
+        document,
+        null,
+        XPathResult.FIRST_ORDERED_NODE_TYPE,
+        null
+      ).singleNodeValue;
+
+      if (!element) {
+        console.warn(`요소를 찾을 수 없습니다: ${change.newPosition.XPath}`);
+        return;
+      }
+
+      change.newPosition.newStyles.forEach((style) => {
+        const [key, value] = style.split(":");
+        element.style[key.trim()] = value.trim();
+      });
+
+      const parentElement = document.getElementById(
+        change.newPosition.parentId
+      );
+      const prevSibling = document.getElementById(
+        change.newPosition.previousSiblingId
+      );
+      if (parentElement) {
+        parentElement.insertBefore(
+          element,
+          prevSibling ? prevSibling.nextSibling : null
+        );
+      }
+    });
+  }
 });
