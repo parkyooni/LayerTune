@@ -9,7 +9,6 @@ let draggedElements = [];
 let lastDropTarget = null;
 let domChanged = false;
 
-let originalDOMSnapshot = null;
 let modifiedDOMSnapshot = null;
 let elementChanges = [];
 
@@ -52,10 +51,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
     });
   }
 });
-
-function captureOriginalDOMSnapshot() {
-  originalDOMSnapshot = document.documentElement.outerHTML;
-}
 
 function captureModifiedDOMSnapshot() {
   modifiedDOMSnapshot = document.documentElement.outerHTML;
@@ -336,7 +331,6 @@ function saveDOMChanges(customName, userId) {
     userId,
     url,
     customName,
-    originalDOMSnapshot,
     modifiedDOMSnapshot,
     elementChanges,
   };

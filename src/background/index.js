@@ -1,5 +1,3 @@
-let originalDOMSnapshot = null;
-
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({ layerHighlightState: {} });
 });
@@ -94,7 +92,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "captureOriginalDOM") {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       chrome.tabs.sendMessage(tabs[0].id, { action: "getDOM" }, (response) => {
-        originalDOMSnapshot = response.dom;
         sendResponse({ status: "success" });
       });
     });
@@ -102,25 +99,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === "resetDOM") {
-    if (originalDOMSnapshot) {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        chrome.tabs.sendMessage(
-          tabs[0].id,
-          {
-            action: "setDOM",
-            dom: originalDOMSnapshot,
-          },
-          (response) => {
-            sendResponse({ status: "success" });
-          }
-        );
-      });
-    } else {
-      sendResponse({
-        status: "error",
-        message: "No original DOM snapshot available",
-      });
-    }
     return true;
   }
 });

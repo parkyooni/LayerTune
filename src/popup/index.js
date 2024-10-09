@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentUrl = null;
   let domChanged = false;
   let loggedIn = false;
-  let layerToDelete = null; // 삭제할 레이어를 저장할 변수
+  let layerToDelete = null;
 
   function updateSaveButtonState() {
     saveButton.disabled = !(loggedIn && domChanged);
@@ -49,9 +49,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 로그인 상태 확인
   chrome.storage.local.get(["userId", "userName"], (result) => {
-    loggedIn = !!result.userId; // 로그인 여부 확인
+    loggedIn = !!result.userId;
     domChanged = false;
     updateSaveButtonState();
     if (loggedIn) {
@@ -59,15 +58,14 @@ document.addEventListener("DOMContentLoaded", () => {
       userNameSpan.textContent = result.userName;
       document.getElementById("userInfo").style.display = "block";
       toggleLogin.style.display = "none";
-      loadSavedLayers(); // 로그인된 상태면 레이어 로드
+      loadSavedLayers();
     } else {
       document.getElementById("userInfo").style.display = "none";
       toggleLogin.style.display = "block";
-      showLoginMessage(); // 로그인 안된 상태면 메시지 표시
+      showLoginMessage();
     }
   });
 
-  // 현재 URL 가져오기
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     currentUrl = new URL(tabs[0].url).href;
 
@@ -123,7 +121,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("userInfo").style.display = "none";
     toggleLogin.style.display = "block";
     updateSaveButtonState();
-    showLoginMessage(); // 로그아웃 시 메시지 표시
+    showLoginMessage();
   });
 
   function fetchUserData(token) {
@@ -140,14 +138,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
         chrome.storage.local.set({ userId: user.id, userName: user.name });
         updateSaveButtonState();
-        loadSavedLayers(); // 사용자 정보 로드 후 레이어 불러오기
+        loadSavedLayers();
       })
       .catch((error) => {
         console.error("Error fetching user data:", error);
       });
   }
 
-  // 레이어 저장 로직
   saveButton.addEventListener("click", () => {
     if (!loggedIn) {
       alert("로그인이 필요합니다.");
@@ -215,26 +212,18 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // 탭 버튼 클릭 시 이벤트 처리
   tabButtons.forEach((button) => {
     button.addEventListener("click", () => {
       const targetTab = button.getAttribute("data-tab");
 
-      // 모든 탭 버튼에서 active 클래스 제거
       tabButtons.forEach((btn) => btn.classList.remove("active"));
-
-      // 클릭된 탭에만 active 클래스 추가
       button.classList.add("active");
-
-      // 모든 탭 콘텐츠 숨김 처리
       tabContents.forEach((content) => {
         content.style.display = "none";
       });
 
-      // 선택된 탭 콘텐츠만 표시
       document.getElementById(`${targetTab}List`).style.display = "block";
 
-      // 탭 전환 시 저장된 레이어 불러오기
       if (loggedIn) {
         loadSavedLayers();
       } else {
@@ -243,13 +232,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // 기본적으로 첫 번째 탭을 활성화 상태로 설정
   document.getElementById("currentUrlList").style.display = "block";
 
   function loadSavedLayers() {
     if (!userId) return;
 
-    // 현재 URL과 일치하는 레이어 불러오기
     fetch(
       `http://localhost:5000/api/layers/url/${encodeURIComponent(currentUrl)}?userId=${userId}`
     )
@@ -263,7 +250,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const currentUrlList = document.getElementById("currentUrlList");
         currentUrlList.innerHTML = "";
         if (layers.length === 0) {
-          currentUrlList.innerHTML = "<p>저장된 레이어가 없습니다.</p>"; // 빈 상태 표시
+          currentUrlList.innerHTML = "<p>저장된 레이어가 없습니다.</p>";
         } else {
           layers.forEach((layer) => {
             const li = document.createElement("li");
@@ -272,7 +259,7 @@ document.addEventListener("DOMContentLoaded", () => {
             deleteIcon.src = "icons/delete_icon.png";
             deleteIcon.addEventListener("click", () => {
               deleteConfirmPopup.style.display = "block";
-              layerToDelete = layer._id; // 삭제할 레이어 ID 저장
+              layerToDelete = layer._id;
             });
             li.appendChild(deleteIcon);
             currentUrlList.appendChild(li);
@@ -283,7 +270,6 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("Error loading current custom links:", error);
       });
 
-    // 모든 레이어 불러오기
     fetch(`http://localhost:5000/api/layers/google/${userId}`)
       .then((response) => {
         if (!response.ok) {
@@ -295,7 +281,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const allCustomList = document.getElementById("allCustomList");
         allCustomList.innerHTML = "";
         if (layers.length === 0) {
-          allCustomList.innerHTML = "<p>저장된 레이어가 없습니다.</p>"; // 빈 상태 표시
+          allCustomList.innerHTML = "<p>저장된 레이어가 없습니다.</p>";
         } else {
           layers.forEach((layer) => {
             const li = document.createElement("li");
@@ -304,7 +290,7 @@ document.addEventListener("DOMContentLoaded", () => {
             deleteIcon.src = "icons/delete_icon.png";
             deleteIcon.addEventListener("click", () => {
               deleteConfirmPopup.style.display = "block";
-              layerToDelete = layer._id; // 삭제할 레이어 ID 저장
+              layerToDelete = layer._id;
             });
             li.appendChild(deleteIcon);
             allCustomList.appendChild(li);
@@ -316,7 +302,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  // 로그인 상태가 아닐 때 표시할 메시지
   function showLoginMessage() {
     const currentUrlList = document.getElementById("currentUrlList");
     const allCustomList = document.getElementById("allCustomList");
@@ -325,7 +310,6 @@ document.addEventListener("DOMContentLoaded", () => {
     allCustomList.innerHTML = "<p>로그인 해주세요.</p>";
   }
 
-  // 삭제 확인 팝업에서 "삭제" 버튼을 클릭했을 때
   confirmDeleteButton.addEventListener("click", () => {
     if (!layerToDelete) return;
     fetch(`http://localhost:5000/api/layers/delete/${layerToDelete}`, {
@@ -338,8 +322,8 @@ document.addEventListener("DOMContentLoaded", () => {
         return response.json();
       })
       .then(() => {
-        deleteConfirmPopup.style.display = "none"; // 삭제 팝업 숨기기
-        loadSavedLayers(); // 레이어 목록 갱신
+        deleteConfirmPopup.style.display = "none";
+        loadSavedLayers();
       })
       .catch((error) => {
         console.error("Error deleting layer:", error);
@@ -347,9 +331,8 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   });
 
-  // 삭제 취소 버튼 클릭 시 팝업 숨기기
   cancelDeleteButton.addEventListener("click", () => {
     deleteConfirmPopup.style.display = "none";
-    layerToDelete = null; // 삭제할 레이어 ID 초기화
+    layerToDelete = null;
   });
 });
