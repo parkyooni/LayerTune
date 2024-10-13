@@ -1,3 +1,5 @@
+import { formatDate } from "../common/utils";
+
 document.addEventListener("DOMContentLoaded", () => {
   const toggleHighlightSwitch = document.getElementById(
     "toggleHighlightSwitch"
@@ -242,6 +244,16 @@ document.addEventListener("DOMContentLoaded", () => {
   function loadSavedLayers() {
     if (!userId) return;
 
+    function fetchCurrentUrlLayers() {
+      const currentUrlApi = `http://localhost:5000/api/layers/url/${encodeURIComponent(currentUrl)}?userId=${userId}`;
+      fetchLayers(currentUrlApi, "currentUrlList", "저장된 콘텐츠가 없습니다.");
+    }
+
+    function fetchAllCustomLayers() {
+      const allCustomApi = `http://localhost:5000/api/layers/google/${userId}`;
+      fetchLayers(allCustomApi, "allCustomList", "저장된 콘텐츠가 없습니다.");
+    }
+
     function fetchLayers(apiUrl, listElementId, emptyMessage) {
       return fetch(apiUrl)
         .then((response) => {
@@ -253,64 +265,88 @@ document.addEventListener("DOMContentLoaded", () => {
         .then((layers) => {
           const listElement = document.getElementById(listElementId);
           listElement.innerHTML = "";
-          if (layers.length === 0) {
-            listElement.innerHTML = `<p>${emptyMessage}</p>`;
+          if (!layers || layers.length === 0) {
+            listElement.innerHTML = `<p class="empty-list">${emptyMessage}</p>`;
           } else {
             layers.forEach((layer) => {
               const li = document.createElement("li");
-              li.textContent =
-                listElementId === "currentUrlList"
-                  ? layer.customName
-                  : `${layer.customName} (${layer.url})`;
 
-              li.addEventListener("click", () => {
-                console.log("레이어 클릭됨: ", layer);
+              if (listElementId === "currentUrlList") {
+                li.innerHTML = `
+              <div class="layer-list">
+                <span>${layer.customName}</span>
+                <div class="layer-footer">
+                  <span>${formatDate(layer.timestamp)}</span>
+                  <img src="icons/delete_icon.png" class="delete-icon" />
+                </div>
+              </div>`;
 
-                clearActiveClassFromList();
-                li.classList.add("active");
+                li.addEventListener("click", () => {
+                  clearActiveClassFromList();
+                  li.classList.add("active");
 
-                chrome.tabs.query(
-                  { active: true, currentWindow: true },
-                  (tabs) => {
-                    chrome.tabs.sendMessage(tabs[0].id, {
-                      action: "applySavedDOM",
-                      modifiedDOMSnapshot: layer.modifiedDOMSnapshot,
-                      elementChanges: layer.elementChanges,
+                  chrome.tabs.query(
+                    { active: true, currentWindow: true },
+                    (tabs) => {
+                      chrome.tabs.sendMessage(tabs[0].id, {
+                        action: "applySavedDOM",
+                        modifiedDOMSnapshot: layer.modifiedDOMSnapshot,
+                        elementChanges: layer.elementChanges,
+                      });
+                    }
+                  );
+                });
+              } else if (listElementId === "allCustomList") {
+                li.innerHTML = `
+              <div class="layer-list">
+                <span>${layer.customName}</span>
+                <span>${formatDate(layer.timestamp)}</span>
+              </div>
+              <div class="layer-footer">
+                <p class="layer-url">${layer.url}</p>
+                <img src="icons/delete_icon.png" class="delete-icon" />
+              </div>`;
+
+                li.addEventListener("click", () => {
+                  navigator.clipboard
+                    .writeText(layer.url)
+                    .then(() => {
+                      alert(`URL이 복사되었습니다: ${layer.url}`);
+                    })
+                    .catch((err) => {
+                      console.error("URL 복사 중 오류가 발생했습니다:", err);
                     });
-                  }
-                );
-              });
+                });
+              }
 
-              const deleteIcon = document.createElement("img");
-              deleteIcon.src = "icons/delete_icon.png";
-              deleteIcon.addEventListener("click", () => {
+              const deleteIcon = li.querySelector(".delete-icon");
+              deleteIcon.addEventListener("click", (event) => {
+                event.stopPropagation();
                 deleteConfirmPopup.style.display = "block";
                 layerToDelete = layer._id;
               });
 
-              li.appendChild(deleteIcon);
               listElement.appendChild(li);
             });
           }
         })
         .catch((error) => {
           console.error(`Error loading layers from ${apiUrl}:`, error);
+          const listElement = document.getElementById(listElementId);
+          listElement.innerHTML = `<p>${emptyMessage}</p>`;
         });
     }
 
-    const currentUrlApi = `http://localhost:5000/api/layers/url/${encodeURIComponent(currentUrl)}?userId=${userId}`;
-    fetchLayers(currentUrlApi, "currentUrlList", "저장된 레이어가 없습니다.");
-
-    const allCustomApi = `http://localhost:5000/api/layers/google/${userId}`;
-    fetchLayers(allCustomApi, "allCustomList", "저장된 레이어가 없습니다.");
+    fetchCurrentUrlLayers();
+    fetchAllCustomLayers();
   }
 
   function showLoginMessage() {
     const currentUrlList = document.getElementById("currentUrlList");
     const allCustomList = document.getElementById("allCustomList");
 
-    currentUrlList.innerHTML = "<p>로그인 해주세요.</p>";
-    allCustomList.innerHTML = "<p>로그인 해주세요.</p>";
+    currentUrlList.innerHTML = `<p class="empty-list">로그인 해주세요.</p>`;
+    allCustomList.innerHTML = `<p class="empty-list">로그인 해주세요.</p>`;
   }
 
   confirmDeleteButton.addEventListener("click", () => {

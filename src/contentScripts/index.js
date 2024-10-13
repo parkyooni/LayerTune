@@ -335,8 +335,6 @@ function saveDOMChanges(customName, userId) {
     elementChanges,
   };
 
-  console.log("Saving DOM changes:", data);
-
   fetch("http://localhost:5000/api/layers/save", {
     method: "POST",
     headers: {
@@ -347,7 +345,6 @@ function saveDOMChanges(customName, userId) {
   })
     .then((response) => response.json())
     .then((result) => {
-      console.log("Server response:", result);
       chrome.runtime.sendMessage({ action: "loadSavedLayers" });
       chrome.runtime.sendMessage({ action: "resetDomChanged" });
     })

@@ -105,7 +105,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "saveDOMChanges") {
-    console.log("Saving DOM changes:", request.data);
     setTimeout(() => {
       sendResponse({
         status: "success",
