@@ -140,7 +140,7 @@
 
 |                                                         변경 전                                                         |                                                         변경 후                                                         |
 | :---------------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------: |
-| <img src="https://github.com/user-attachments/assets/d01e455d-3b90-4407-ae1c-1ed830496fc6" width="auto" height="auto" > | <img src="https://github.com/user-attachments/assets/632ca3d5-a3c2-4a89-85e2-44a056180315" width="auto" height="auto" > |
+| <img src="https://github.com/user-attachments/assets/632ca3d5-a3c2-4a89-85e2-44a056180315" width="auto" height="auto" > | <img src="https://github.com/user-attachments/assets/d01e455d-3b90-4407-ae1c-1ed830496fc6" width="auto" height="auto" > |
 |                                     버튼 활성화시 무너지는 현상의 콘텐츠 가이드 선                                      |                                버튼 활성화시 무너짐을 해결하고 점선표시로 전체 가이드 선                                |
 
 <hr/>
