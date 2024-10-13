@@ -47,7 +47,10 @@
 <details>
 <summary>미리보기</summary>
 <div markdown="1">
-<img src=""  width="700" height="370">
+
+<img src="https://github.com/user-attachments/assets/3b3595ec-56b3-4147-931f-377955fc9b1e" alt="콘텐츠 활성화" style="width: 100%" /><br/>
+현재 커스텀 링크에서 저장한 리스트를 선택하면 사용자가 저장한 콘텐츠 구조를 보여줍니다.
+
 </div>
 </details>
 
