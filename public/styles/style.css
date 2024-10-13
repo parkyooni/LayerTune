@@ -173,6 +173,7 @@ body.extension-popup {
   padding: 0.3125rem;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 .custom-list li.active {
@@ -214,18 +215,26 @@ body.extension-popup {
   align-items: center;
 }
 
-.layer-timestamp {
-  font-size: 0.625rem;
-  color: var(--disabled-color);
+.layer-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
 }
 
-.delete-layer-btn {
-  width: 16px;
-  height: 16px;
+.delete-icon {
+  height: 20px;
+}
+
+.layer-list {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   cursor: pointer;
-  margin-left: 0.3125rem;
-  font-size: 0;
-  background: url("../icons/delete_icon.png");
+}
+
+.empty-list {
+  text-align: center;
 }
 
 .layer-url {
