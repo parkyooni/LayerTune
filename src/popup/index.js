@@ -25,37 +25,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let domChanged = false;
   let loggedIn = false;
   let layerToDelete = null;
-  let domChangesData = null;
-
-  function updateSaveButtonState() {
-    saveButton.disabled = !(loggedIn && domChanged);
-  }
-
-  function clearActiveClassFromList() {
-    const listItems = document.querySelectorAll("#currentUrlList li");
-    listItems.forEach((item) => item.classList.remove("active"));
-  }
-
-  function updateLayerHighlight(isActive) {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      chrome.scripting.executeScript({
-        target: { tabId: tabs[0].id },
-        function: (active) => {
-          document.querySelectorAll("*").forEach((el) => {
-            if (
-              active &&
-              (el.children.length > 0 || el.textContent.trim() === "")
-            ) {
-              el.style.outline = "1px dashed var(--border-color)";
-            } else {
-              el.style.outline = "none";
-            }
-          });
-        },
-        args: [isActive],
-      });
-    });
-  }
 
   chrome.storage.local.get(["userId", "userName"], (result) => {
     loggedIn = !!result.userId;
@@ -112,6 +81,36 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  function updateSaveButtonState() {
+    saveButton.disabled = !(loggedIn && domChanged);
+  }
+
+  function clearActiveClassFromList() {
+    const listItems = document.querySelectorAll("#currentUrlList li");
+    listItems.forEach((item) => item.classList.remove("active"));
+  }
+
+  function updateLayerHighlight(isActive) {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      chrome.scripting.executeScript({
+        target: { tabId: tabs[0].id },
+        function: (active) => {
+          document.querySelectorAll("*").forEach((el) => {
+            if (
+              active &&
+              (el.children.length > 0 || el.textContent.trim() === "")
+            ) {
+              el.style.outline = "1px dashed var(--border-color)";
+            } else {
+              el.style.outline = "none";
+            }
+          });
+        },
+        args: [isActive],
+      });
+    });
+  }
+
   toggleLogin.addEventListener("click", () => {
     chrome.identity.getAuthToken({ interactive: true }, (token) => {
       if (chrome.runtime.lastError || !token) return;
@@ -128,23 +127,21 @@ document.addEventListener("DOMContentLoaded", () => {
     showLoginMessage();
   });
 
-  function fetchUserData(token) {
-    fetch("https://www.googleapis.com/oauth2/v1/userinfo?alt=json", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((user) => {
-        userId = user.id;
-        loggedIn = true;
-        userNameSpan.textContent = user.name;
-        document.getElementById("userInfo").style.display = "block";
-        toggleLogin.style.display = "none";
+  async function fetchUserData(token) {
+    try {
+      const user = await api.fetchUserInfo(token);
+      userId = user.id;
+      loggedIn = true;
+      userNameSpan.textContent = user.name;
+      document.getElementById("userInfo").style.display = "block";
+      toggleLogin.style.display = "none";
 
-        chrome.storage.local.set({ userId: user.id, userName: user.name });
-        updateSaveButtonState();
-        loadSavedLayers();
-      })
-      .catch((error) => {});
+      await chrome.storage.local.set({ userId: user.id, userName: user.name });
+      updateSaveButtonState();
+      loadSavedLayers();
+    } catch (error) {
+      console.error("Login failed:", error);
+    }
   }
 
   saveButton.addEventListener("click", () => {
@@ -223,7 +220,18 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       await api.saveLayer(data);
       await loadSavedLayers();
-      alert("Changes saved successfully!");
+      savePopup.style.display = "none";
+      customNameInput.value = "";
+      toggleHighlightSwitch.checked = false;
+      chrome.storage.local.get(["layerHighlightState"], (result) => {
+        const urlState = result.layerHighlightState || {};
+        urlState[currentUrl] = false;
+        chrome.storage.local.set({ layerHighlightState: urlState });
+      });
+
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        chrome.tabs.reload(tabs[0].id);
+      });
     } catch (error) {
       console.error("Save failed:", error);
       alert("저장 중 오류가 발생했습니다. 다시 시도해 주세요.");

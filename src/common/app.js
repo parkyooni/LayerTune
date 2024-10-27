@@ -66,9 +66,21 @@ export const deleteLayer = async (layerId) => {
 };
 
 export const fetchUserInfo = async (token) => {
-  return fetchAPI("https://www.googleapis.com/oauth2/v1/userinfo?alt=json", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  try {
+    const response = await fetch(
+      "https://www.googleapis.com/oauth2/v1/userinfo?alt=json",
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch user info");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching user info:", error);
+    throw error;
+  }
 };
 
 export const api = {

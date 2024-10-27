@@ -1,15 +1,21 @@
-import { isExcludedElement } from "../common/utils.js";
+import { state } from "../common/state.js";
+import {
+  isExcludedElement,
+  assignUniqueIdsToDOM,
+  getXPath,
+  getElementByXPath,
+  clearSelectedLayerStyles,
+  applyChanges,
+} from "../common/utils.js";
 
-const selectedLayers = new Set();
+const elementChangeMap = new Map();
+const versionHistory = [];
 let shiftKeyDown = false;
 let ctrlKeyDown = false;
-let layerIdCounter = 0;
 let isDragging = false;
 let draggedElements = [];
-let lastDropTarget = null;
 let domChanged = false;
 let elementChanges = [];
-const elementChangeMap = new Map();
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Shift") shiftKeyDown = true;
@@ -49,40 +55,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-function assignUniqueIdsToDOM(node, depth = "0") {
-  if (node.nodeType === Node.ELEMENT_NODE) {
-    if (["SCRIPT", "STYLE"].includes(node.nodeName)) return;
-    node.dataset.id = `${depth}`;
-  }
-  Array.from(node.childNodes).forEach((child, index) =>
-    assignUniqueIdsToDOM(child, `${depth}.${index}`)
-  );
-}
-
 assignUniqueIdsToDOM(document.body);
-
-function getXPath(element) {
-  if (element.id) return `//*[@id="${element.id}"]`;
-  const parts = [];
-  while (element && element.nodeType === Node.ELEMENT_NODE) {
-    let index = 0;
-    let sibling = element.previousSibling;
-    while (sibling) {
-      if (
-        sibling.nodeType === Node.ELEMENT_NODE &&
-        sibling.nodeName === element.nodeName
-      ) {
-        index++;
-      }
-      sibling = sibling.previousSibling;
-    }
-    const tagName = element.nodeName.toLowerCase();
-    const pathIndex = index ? `[${index + 1}]` : "";
-    parts.unshift(`${tagName}${pathIndex}`);
-    element = element.parentNode;
-  }
-  return parts.length ? `/${parts.join("/")}` : null;
-}
 
 const EXTENSION_STYLES = ["outline", "background-color"];
 const EXTENSION_ATTRIBUTES = ["draggable", "style"];
@@ -134,20 +107,6 @@ function trackElementChange(element, changeType, swapResult = null) {
   return change;
 }
 
-function getNewDepthId(element) {
-  const parts = [];
-  let current = element;
-  while (current) {
-    const parent = current.parentNode;
-    if (parent) {
-      const index = Array.from(parent.childNodes).indexOf(current);
-      parts.unshift(index);
-    }
-    current = parent;
-  }
-  return parts.join(".");
-}
-
 function activateLayerSelection() {
   document.querySelectorAll("*").forEach((element) => {
     if (!isExcludedElement(element)) {
@@ -175,29 +134,29 @@ function handleMouseDown(event) {
   if (isExcludedElement(targetElement)) return;
 
   if (!shiftKeyDown && !ctrlKeyDown) {
-    if (selectedLayers.has(targetElement)) {
-      selectedLayers.delete(targetElement);
+    if (state.selectedLayers.has(targetElement)) {
+      state.selectedLayers.delete(targetElement);
       targetElement.style.outline = "1px dashed var(--border-color)";
       targetElement.style.backgroundColor = "transparent";
     } else {
-      selectedLayers.forEach((layer) => {
+      state.selectedLayers.forEach((layer) => {
         layer.style.outline = "1px dashed var(--border-color)";
         layer.style.backgroundColor = "transparent";
       });
-      selectedLayers.clear();
-      selectedLayers.add(targetElement);
+      state.selectedLayers.clear();
+      state.selectedLayers.add(targetElement);
       targetElement.style.outline = "1px solid var(--border-layer-color)";
       targetElement.style.backgroundColor = "var(--dragging-bg-color)";
       draggedElements = [targetElement];
     }
     trackElementChange(targetElement, "select");
   } else if (shiftKeyDown && !ctrlKeyDown) {
-    if (selectedLayers.has(targetElement)) {
-      selectedLayers.delete(targetElement);
+    if (state.selectedLayers.has(targetElement)) {
+      state.selectedLayers.delete(targetElement);
       targetElement.style.outline = "1px dashed var(--border-color)";
       targetElement.style.backgroundColor = "transparent";
     } else {
-      selectedLayers.add(targetElement);
+      state.selectedLayers.add(targetElement);
       targetElement.style.outline = "1px solid var(--border-layer-color)";
       targetElement.style.backgroundColor = "var(--dragging-bg-color)";
     }
@@ -205,7 +164,7 @@ function handleMouseDown(event) {
   }
 
   if (ctrlKeyDown && event.button === 0) {
-    draggedElements = Array.from(selectedLayers);
+    draggedElements = Array.from(state.selectedLayers);
     draggedElements.forEach(enableDragAndDrop);
   }
 }
@@ -239,12 +198,12 @@ function handleDragOver(event) {
   const dropTargetElement = event.target;
 
   if (dropTargetElement && !draggedElements.includes(dropTargetElement)) {
-    if (lastDropTarget) {
-      lastDropTarget.style.backgroundColor = "transparent";
+    if (state.lastDropTarget) {
+      state.lastDropTarget.style.backgroundColor = "transparent";
     }
 
     dropTargetElement.style.backgroundColor = "var(--active-ba-color)";
-    lastDropTarget = dropTargetElement;
+    state.lastDropTarget = dropTargetElement;
   }
 }
 
@@ -296,18 +255,6 @@ function handleDrop(event) {
   clearSelectedLayerStyles();
 }
 
-function saveToVersionHistory() {
-  const versionedChanges = {
-    timestamp: new Date().toISOString(),
-    changes: Array.from(elementChangeMap.values()).map((change) => ({
-      ...change,
-      finalElementId: change.finalElementId || change.elementId,
-    })),
-  };
-  versionHistory.push(versionedChanges);
-  return versionedChanges;
-}
-
 function monitorDOMChanges() {
   const observer = new MutationObserver(() => {
     domChanged = true;
@@ -319,20 +266,6 @@ function monitorDOMChanges() {
     childList: true,
     subtree: true,
   });
-}
-
-function clearSelectedLayerStyles() {
-  selectedLayers.forEach((layer) => {
-    layer.style.outline = "none";
-    layer.style.backgroundColor = "transparent";
-  });
-
-  if (lastDropTarget) {
-    lastDropTarget.style.backgroundColor = "transparent";
-    lastDropTarget = null;
-  }
-
-  selectedLayers.clear();
 }
 
 function swapElements(firstElement, secondElement) {
@@ -408,83 +341,5 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 });
-
-function getElementByXPath(xpath) {
-  try {
-    return document.evaluate(
-      xpath,
-      document,
-      null,
-      XPathResult.FIRST_ORDERED_NODE_TYPE,
-      null
-    ).singleNodeValue;
-  } catch (error) {
-    console.error("Error finding element by XPath:", error);
-    return null;
-  }
-}
-
-function isAttributesMatch(element, updatedAttributes) {
-  return Object.entries(updatedAttributes).every(
-    ([attr, value]) => element.getAttribute(attr) === value
-  );
-}
-
-function applyChanges(element, change) {
-  if (!element) return;
-
-  const sourceElement = element;
-
-  const targetParent = document.evaluate(
-    change.elementXPath.substring(0, change.elementXPath.lastIndexOf("/")),
-    document,
-    null,
-    XPathResult.FIRST_ORDERED_NODE_TYPE,
-    null
-  ).singleNodeValue;
-
-  if (targetParent) {
-    const indexMatch = change.elementXPath.match(/\[(\d+)\]$/);
-    const targetIndex = indexMatch ? parseInt(indexMatch[1]) - 1 : 0;
-
-    const targetSiblings = Array.from(targetParent.children);
-    if (targetIndex >= 0 && targetIndex <= targetSiblings.length) {
-      const clonedElement = sourceElement.cloneNode(true);
-
-      if (change.finalElementId) {
-        clonedElement.dataset.id = change.finalElementId;
-      }
-
-      Object.entries(change.updatedAttributes).forEach(([attr, value]) => {
-        if (attr !== "data-id") {
-          clonedElement.setAttribute(attr, value);
-        }
-      });
-
-      Object.entries(change.updatedStyles).forEach(
-        ([styleProp, styleValue]) => {
-          clonedElement.style[styleProp] = styleValue;
-        }
-      );
-
-      clonedElement.style.transition = "background-color 0.5s ease";
-      clonedElement.style.backgroundColor = "rgba(255, 255, 0, 0.3)";
-
-      if (targetIndex >= targetSiblings.length) {
-        targetParent.appendChild(clonedElement);
-      } else {
-        targetParent.insertBefore(clonedElement, targetSiblings[targetIndex]);
-      }
-
-      sourceElement.remove();
-
-      setTimeout(() => {
-        clonedElement.style.backgroundColor = "";
-      }, 1000);
-    }
-  }
-}
-
-const versionHistory = [];
 
 monitorDOMChanges();
