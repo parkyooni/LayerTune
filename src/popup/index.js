@@ -1,3 +1,4 @@
+import { api } from "../common/app.js";
 import { formatDate } from "../common/utils";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -176,34 +177,40 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   });
 
-  function checkDuplicateName(customName) {
-    return fetch(
-      `http://localhost:5000/api/layers/check/${encodeURIComponent(customName)}`
-    )
-      .then((response) => response.json())
-      .then((data) => data.exists)
-      .catch((error) => {
-        throw error;
-      });
+  async function checkDuplicateName(customName) {
+    try {
+      const exists = await api.checkDuplicateName(customName);
+      return exists;
+    } catch (error) {
+      console.error("Check duplicate name failed:", error);
+      alert("이름 중복 확인 중 오류가 발생했습니다.");
+      throw error;
+    }
   }
 
   function requestDOMChanges(customName) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const currentTab = tabs[0];
       const url = currentTab.url;
+
       chrome.tabs.sendMessage(
         currentTab.id,
         { action: "saveDOMChanges", customName, userId, url },
         {},
-        (response) => {
+        async (response) => {
           if (response && response.status === "success" && response.data) {
-            const { saveDOMChanges } = response.data;
-            saveToAPI({
-              elementChanges: saveDOMChanges,
-              customName,
-              userId,
-              url,
-            });
+            try {
+              const { saveDOMChanges } = response.data;
+              await saveToAPI({
+                elementChanges: saveDOMChanges,
+                customName,
+                userId,
+                url,
+              });
+            } catch (error) {
+              console.error("Failed to save changes:", error);
+              alert("저장 중 오류가 발생했습니다. 다시 시도해 주세요.");
+            }
           } else {
             alert("DOM 데이터 전송 중 오류가 발생했습니다.");
           }
@@ -212,22 +219,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function saveToAPI(data) {
-    const { customName, userId, url, elementChanges } = data;
-    fetch("http://localhost:5000/api/layers/save", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${userId}`,
-      },
-      body: JSON.stringify({ customName, url, elementChanges, userId }),
-    })
-      .then((response) => response.json())
-      .then(() => {
-        loadSavedLayers();
-        alert("Changes saved successfully!");
-      })
-      .catch((error) => {});
+  async function saveToAPI(data) {
+    try {
+      await api.saveLayer(data);
+      await loadSavedLayers();
+      alert("Changes saved successfully!");
+    } catch (error) {
+      console.error("Save failed:", error);
+      alert("저장 중 오류가 발생했습니다. 다시 시도해 주세요.");
+    }
   }
 
   cancelSaveButton.addEventListener("click", () => {
@@ -263,126 +263,123 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("currentUrlList").style.display = "block";
 
-  function loadSavedLayers() {
+  const createListItem = (layer, listElementId) => {
+    const li = document.createElement("li");
+
+    if (listElementId === "currentUrlList") {
+      li.innerHTML = `
+      <div class="layer-list">
+        <span>${layer.customName}</span>
+        <div class="layer-footer">
+          <span>${formatDate(layer.timestamp)}</span>
+          <img src="icons/delete_icon.png" class="delete-icon" />
+        </div>
+      </div>`;
+
+      li.addEventListener("click", () => {
+        clearActiveClassFromList();
+        li.classList.add("active");
+
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            action: "applySavedDOM",
+            elementChanges: layer.elementChanges,
+          });
+        });
+      });
+    } else if (listElementId === "allCustomList") {
+      li.innerHTML = `
+      <div class="layer-list">
+        <span>${layer.customName}</span>
+        <span>${formatDate(layer.timestamp)}</span>
+      </div>
+      <div class="layer-footer">
+        <p class="layer-url">${layer.url}</p>
+        <img src="icons/delete_icon.png" class="delete-icon" />
+      </div>`;
+
+      li.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(layer.url);
+          alert(`URL이 복사되었습니다: ${layer.url}`);
+        } catch (err) {
+          console.error("Failed to copy URL:", err);
+          alert("URL 복사에 실패했습니다.");
+        }
+      });
+    }
+
+    const deleteIcon = li.querySelector(".delete-icon");
+    deleteIcon.addEventListener("click", (event) => {
+      event.stopPropagation();
+      deleteConfirmPopup.style.display = "block";
+      layerToDelete = layer._id;
+    });
+
+    return li;
+  };
+
+  const updateList = (listElementId, layers, emptyMessage) => {
+    const listElement = document.getElementById(listElementId);
+    listElement.innerHTML = "";
+
+    if (!layers || layers.length === 0) {
+      listElement.innerHTML = `<p class="empty-list">${emptyMessage}</p>`;
+      return;
+    }
+
+    layers.forEach((layer) => {
+      const li = createListItem(layer, listElementId);
+      listElement.appendChild(li);
+    });
+  };
+
+  async function loadSavedLayers() {
     if (!userId) return;
 
-    function fetchCurrentUrlLayers() {
-      const currentUrlApi = `http://localhost:5000/api/layers/url/${encodeURIComponent(currentUrl)}?userId=${userId}`;
-      fetchLayers(currentUrlApi, "currentUrlList", "저장된 콘텐츠가 없습니다.");
+    try {
+      const currentUrlLayers = await api.getLayersByUrl(currentUrl, userId);
+      updateList(
+        "currentUrlList",
+        currentUrlLayers,
+        "저장된 콘텐츠가 없습니다."
+      );
+
+      const allCustomLayers = await api.getAllLayers(userId);
+      updateList("allCustomList", allCustomLayers, "저장된 콘텐츠가 없습니다.");
+    } catch (error) {
+      console.error("Failed to load layers:", error);
+      showErrorMessage();
     }
-
-    function fetchAllCustomLayers() {
-      const allCustomApi = `http://localhost:5000/api/layers/google/${userId}`;
-      fetchLayers(allCustomApi, "allCustomList", "저장된 콘텐츠가 없습니다.");
-    }
-
-    function fetchLayers(apiUrl, listElementId, emptyMessage) {
-      return fetch(apiUrl)
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error("404 Not Found");
-          }
-          return response.json();
-        })
-        .then((layers) => {
-          const listElement = document.getElementById(listElementId);
-          listElement.innerHTML = "";
-          if (!layers || layers.length === 0) {
-            listElement.innerHTML = `<p class="empty-list">${emptyMessage}</p>`;
-          } else {
-            layers.forEach((layer) => {
-              const li = document.createElement("li");
-
-              if (listElementId === "currentUrlList") {
-                li.innerHTML = `
-                  <div class="layer-list">
-                    <span>${layer.customName}</span>
-                    <div class="layer-footer">
-                      <span>${formatDate(layer.timestamp)}</span>
-                      <img src="icons/delete_icon.png" class="delete-icon" />
-                    </div>
-                  </div>`;
-                li.addEventListener("click", () => {
-                  clearActiveClassFromList();
-                  li.classList.add("active");
-
-                  chrome.tabs.query(
-                    { active: true, currentWindow: true },
-                    (tabs) => {
-                      chrome.tabs.sendMessage(tabs[0].id, {
-                        action: "applySavedDOM",
-                        elementChanges: layer.elementChanges,
-                      });
-                    }
-                  );
-                });
-              } else if (listElementId === "allCustomList") {
-                li.innerHTML = `
-                  <div class="layer-list">
-                    <span>${layer.customName}</span>
-                    <span>${formatDate(layer.timestamp)}</span>
-                  </div>
-                  <div class="layer-footer">
-                    <p class="layer-url">${layer.url}</p>
-                    <img src="icons/delete_icon.png" class="delete-icon" />
-                  </div>`;
-                li.addEventListener("click", () => {
-                  navigator.clipboard
-                    .writeText(layer.url)
-                    .then(() => {
-                      alert(`URL이 복사되었습니다: ${layer.url}`);
-                    })
-                    .catch((err) => {});
-                });
-              }
-
-              const deleteIcon = li.querySelector(".delete-icon");
-              deleteIcon.addEventListener("click", (event) => {
-                event.stopPropagation();
-                deleteConfirmPopup.style.display = "block";
-                layerToDelete = layer._id;
-              });
-
-              listElement.appendChild(li);
-            });
-          }
-        })
-        .catch((error) => {
-          const listElement = document.getElementById(listElementId);
-          listElement.innerHTML = `<p>${emptyMessage}</p>`;
-        });
-    }
-
-    fetchCurrentUrlLayers();
-    fetchAllCustomLayers();
   }
 
   function showLoginMessage() {
-    const currentUrlList = document.getElementById("currentUrlList");
-    const allCustomList = document.getElementById("allCustomList");
-
-    currentUrlList.innerHTML = `<p class="empty-list">로그인 해주세요.</p>`;
-    allCustomList.innerHTML = `<p class="empty-list">로그인 해주세요.</p>`;
+    const lists = ["currentUrlList", "allCustomList"];
+    lists.forEach((listId) => {
+      const listElement = document.getElementById(listId);
+      listElement.innerHTML = `<p class="empty-list">로그인 해주세요.</p>`;
+    });
   }
 
-  confirmDeleteButton.addEventListener("click", () => {
+  function showErrorMessage() {
+    const lists = ["currentUrlList", "allCustomList"];
+    lists.forEach((listId) => {
+      const listElement = document.getElementById(listId);
+      listElement.innerHTML = `<p class="empty-list">데이터를 불러오는데 실패했습니다.</p>`;
+    });
+  }
+
+  confirmDeleteButton.addEventListener("click", async () => {
     if (!layerToDelete) return;
-    fetch(`http://localhost:5000/api/layers/delete/${layerToDelete}`, {
-      method: "DELETE",
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Failed to delete layer: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(() => {
-        deleteConfirmPopup.style.display = "none";
-        loadSavedLayers();
-      })
-      .catch((error) => {
-        alert("삭제 중 문제가 발생했습니다. 다시 시도해 주세요.");
-      });
+
+    try {
+      await api.deleteLayer(layerToDelete);
+      deleteConfirmPopup.style.display = "none";
+      await loadSavedLayers();
+    } catch (error) {
+      console.error("Delete failed:", error);
+      alert("삭제 중 문제가 발생했습니다. 다시 시도해 주세요.");
+    }
   });
 
   cancelDeleteButton.addEventListener("click", () => {
