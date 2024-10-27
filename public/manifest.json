@@ -22,13 +22,6 @@
       },
       "description": "Undo last action"
     },
-    "reset": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+R",
-        "mac": "Command+Shift+R"
-      },
-      "description": "Reset all changes"
-    },
     "save": {
       "suggested_key": {
         "default": "Ctrl+Shift+S",

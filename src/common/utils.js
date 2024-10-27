@@ -1,4 +1,8 @@
-import { EXCLUDED_ELEMENTS } from "../common/excludedElements.js";
+const EXCLUDED_ELEMENTS = [
+  { tagName: "body" },
+  { id: "root" },
+  { className: "no-drop" },
+];
 
 function matchTagName(element, exclusion) {
   return (
