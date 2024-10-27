@@ -1,5 +1,6 @@
 import { api } from "../common/app.js";
 import { formatDate } from "../common/utils";
+import { state } from "../common/state.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   const toggleHighlightSwitch = document.getElementById(
@@ -22,13 +23,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let userId = null;
   let currentUrl = null;
-  let domChanged = false;
   let loggedIn = false;
   let layerToDelete = null;
 
   chrome.storage.local.get(["userId", "userName"], (result) => {
     loggedIn = !!result.userId;
-    domChanged = false;
+    state.domChanged = false;
     updateSaveButtonState();
     if (loggedIn) {
       userId = result.userId;
@@ -68,13 +68,25 @@ document.addEventListener("DOMContentLoaded", () => {
         updateLayerHighlight(isActive);
       });
     });
+
+    chrome.tabs.sendMessage(
+      tabs[0].id,
+      { action: "getDomChangedStatus" },
+      (response) => {
+        if (response && response.domChanged) {
+          state.domChanged = response.domChanged;
+          updateSaveButtonState();
+        }
+      }
+    );
   });
 
   chrome.runtime.onMessage.addListener((request) => {
     if (request.action === "domChanged") {
-      domChanged = true;
+      state.domChanged = true;
       updateSaveButtonState();
     }
+
     if (request.action === "saveDOMChanges") {
       saveToAPI(request.data);
       sendResponse({ status: "DOM changes received in popup" });
@@ -82,7 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function updateSaveButtonState() {
-    saveButton.disabled = !(loggedIn && domChanged);
+    saveButton.disabled = !(loggedIn && state.domChanged);
   }
 
   function clearActiveClassFromList() {
@@ -120,6 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   logoutButton.addEventListener("click", () => {
     userId = null;
+    loggedIn = false;
     chrome.storage.local.remove(["userId", "userName"]);
     document.getElementById("userInfo").style.display = "none";
     toggleLogin.style.display = "block";
@@ -223,6 +236,7 @@ document.addEventListener("DOMContentLoaded", () => {
       savePopup.style.display = "none";
       customNameInput.value = "";
       toggleHighlightSwitch.checked = false;
+      state.domChanged = false;
       chrome.storage.local.get(["layerHighlightState"], (result) => {
         const urlState = result.layerHighlightState || {};
         urlState[currentUrl] = false;

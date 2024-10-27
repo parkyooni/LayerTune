@@ -19,12 +19,6 @@ chrome.commands.onCommand.addListener((command) => {
   });
 });
 
-function executeContentScript(action) {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    chrome.tabs.sendMessage(tabs[0].id, { action: action });
-  });
-}
-
 chrome.tabs.onActivated.addListener((activeInfo) => {
   updateLayerHighlightState(activeInfo.tabId);
 });
@@ -47,6 +41,12 @@ function updateLayerHighlightState(tabId) {
         active: isActive,
       });
     });
+  });
+}
+
+function executeContentScript(action) {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    chrome.tabs.sendMessage(tabs[0].id, { action: action });
   });
 }
 
@@ -78,9 +78,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true;
   }
-});
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "saveDOMChanges") {
     chrome.runtime.sendMessage(request.data, (response) => {
       sendResponse(response);

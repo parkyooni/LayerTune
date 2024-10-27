@@ -14,7 +14,6 @@ let shiftKeyDown = false;
 let ctrlKeyDown = false;
 let isDragging = false;
 let draggedElements = [];
-let domChanged = false;
 let elementChanges = [];
 
 document.addEventListener("keydown", (e) => {
@@ -211,9 +210,7 @@ function handleDrop(event) {
   event.preventDefault();
   const dropTargetElement = event.target;
 
-  if (isExcludedElement(dropTargetElement)) {
-    return;
-  }
+  if (isExcludedElement(dropTargetElement)) return;
 
   if (dropTargetElement && !draggedElements.includes(dropTargetElement)) {
     const dropParent = dropTargetElement.parentNode;
@@ -230,35 +227,35 @@ function handleDrop(event) {
     } else {
       draggedElements.forEach((draggedElement) => {
         try {
-          const originalId = draggedElement.dataset.id;
           dropParent.insertBefore(
             draggedElement,
             dropTargetElement.nextSibling
           );
-
           requestAnimationFrame(() => {
             assignUniqueIdsToDOM(document.body);
-            const movedElement = document.querySelector(
-              `[data-id="${draggedElement.dataset.id}"]`
-            );
-            if (movedElement) {
-              trackElementChange(movedElement, "move");
-            }
+            trackElementChange(draggedElement, "move");
           });
         } catch (error) {
           console.error("Error moving element:", error);
         }
       });
     }
+
+    state.domChanged = true;
+    chrome.runtime.sendMessage({ action: "domChanged" });
   }
 
   clearSelectedLayerStyles();
 }
 
 function monitorDOMChanges() {
+  let initialLoadComplete = false;
+
   const observer = new MutationObserver(() => {
-    domChanged = true;
-    chrome.runtime.sendMessage({ action: "domChanged" });
+    if (initialLoadComplete) {
+      state.domChanged = true;
+      chrome.runtime.sendMessage({ action: "domChanged" });
+    }
   });
 
   observer.observe(document.body, {
@@ -296,6 +293,11 @@ function swapElements(firstElement, secondElement) {
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "getDomChangedStatus") {
+    sendResponse({ domChanged: state.domChanged });
+    return true;
+  }
+
   if (request.action === "saveDOMChanges") {
     const versionedChanges = {
       timestamp: new Date().toISOString(),
