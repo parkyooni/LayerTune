@@ -1,6 +1,6 @@
 import { isExcludedElement } from "../common/utils.js";
 
-let selectedLayers = new Set();
+const selectedLayers = new Set();
 let shiftKeyDown = false;
 let ctrlKeyDown = false;
 let layerIdCounter = 0;
@@ -8,9 +8,8 @@ let isDragging = false;
 let draggedElements = [];
 let lastDropTarget = null;
 let domChanged = false;
-
-let modifiedDOMSnapshot = null;
 let elementChanges = [];
+const elementChangeMap = new Map();
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Shift") shiftKeyDown = true;
@@ -27,7 +26,6 @@ chrome.storage.local.get(["layerHighlightState"], (result) => {
     const currentUrl = response.url;
     const isLayerHighlightActive =
       result.layerHighlightState[currentUrl] || false;
-
     if (isLayerHighlightActive) {
       activateLayerSelection();
     } else {
@@ -42,7 +40,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
       const currentUrl = response.url;
       const isLayerHighlightActive =
         changes.layerHighlightState.newValue[currentUrl];
-
       if (isLayerHighlightActive) {
         activateLayerSelection();
       } else {
@@ -52,93 +49,103 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-function captureModifiedDOMSnapshot() {
-  modifiedDOMSnapshot = document.documentElement.outerHTML;
+function assignUniqueIdsToDOM(node, depth = "0") {
+  if (node.nodeType === Node.ELEMENT_NODE) {
+    if (["SCRIPT", "STYLE"].includes(node.nodeName)) return;
+    node.dataset.id = `${depth}`;
+  }
+  Array.from(node.childNodes).forEach((child, index) =>
+    assignUniqueIdsToDOM(child, `${depth}.${index}`)
+  );
 }
+
+assignUniqueIdsToDOM(document.body);
 
 function getXPath(element) {
-  if (element.id !== "") {
-    return `//*[@id="${element.id}"]`;
-  }
-
-  let path = "";
-  for (
-    let node = element;
-    node && node.nodeType === Node.ELEMENT_NODE;
-    node = node.parentNode
-  ) {
-    let index = 1;
-    for (
-      let sibling = node.previousElementSibling;
-      sibling;
-      sibling = sibling.previousElementSibling
-    ) {
-      if (sibling.nodeName === node.nodeName) {
+  if (element.id) return `//*[@id="${element.id}"]`;
+  const parts = [];
+  while (element && element.nodeType === Node.ELEMENT_NODE) {
+    let index = 0;
+    let sibling = element.previousSibling;
+    while (sibling) {
+      if (
+        sibling.nodeType === Node.ELEMENT_NODE &&
+        sibling.nodeName === element.nodeName
+      ) {
         index++;
       }
+      sibling = sibling.previousSibling;
     }
-    const tagName = node.nodeName.toLowerCase();
-    path = `/${tagName}[${index}]` + path;
+    const tagName = element.nodeName.toLowerCase();
+    const pathIndex = index ? `[${index + 1}]` : "";
+    parts.unshift(`${tagName}${pathIndex}`);
+    element = element.parentNode;
   }
-
-  return path;
+  return parts.length ? `/${parts.join("/")}` : null;
 }
 
-function verifyXPath(element, xpath) {
-  try {
-    const result = document.evaluate(
-      xpath,
-      document,
-      null,
-      XPathResult.FIRST_ORDERED_NODE_TYPE,
-      null
-    );
-    return result.singleNodeValue === element;
-  } catch (error) {
-    console.error("XPath 평가 오류:", error);
-    return false;
-  }
-}
+const EXTENSION_STYLES = ["outline", "background-color"];
+const EXTENSION_ATTRIBUTES = ["draggable", "style"];
 
-function trackElementChange(element, changeType) {
-  const elementId = element.id || `layer-${Date.now()}`;
-  if (!element.id) {
-    element.id = elementId;
-  }
-
-  let xpath = getXPath(element);
-  if (!verifyXPath(element, xpath)) {
-    console.warn("XPath 검증 실패:", element);
-    console.warn("생성된 XPath:", xpath);
-    xpath = `//*[@id="${elementId}"]`;
-  }
-
+function trackElementChange(element, changeType, swapResult = null) {
+  const initialElementId = element.dataset.id;
   const change = {
-    elementId: elementId,
-    newPosition: {
-      parentId: element.parentNode ? element.parentNode.id : null,
-      previousSiblingId: element.previousElementSibling
-        ? element.previousElementSibling.id
-        : null,
-      newStyles: Array.from(element.style).map(
-        (style) => `${style}: ${element.style[style]}`
-      ),
-      XPath: xpath,
-    },
-    originalPosition: {
-      parentId: element.parentNode ? element.parentNode.id : null,
-      previousSiblingId: element.previousElementSibling
-        ? element.previousElementSibling.id
-        : null,
-      originalStyles: Array.from(element.style).map(
-        (style) => `${style}: ${element.style[style]}`
-      ),
-      XPath: xpath,
-    },
-    changeType: changeType,
+    elementId: initialElementId,
+    initialElementId: initialElementId,
+    elementXPath: getXPath(element),
+    updatedAttributes: {},
+    updatedStyles: {},
+    changeType,
   };
 
-  elementChanges.push(change);
+  Array.from(element.attributes).forEach((attr) => {
+    if (!EXTENSION_ATTRIBUTES.includes(attr.name)) {
+      change.updatedAttributes[attr.name] = attr.value;
+    }
+  });
+
+  Array.from(element.style).forEach((style) => {
+    if (!EXTENSION_STYLES.includes(style)) {
+      change.updatedStyles[style] = element.style[style];
+    }
+  });
+
+  if (changeType === "dragEnd" && swapResult) {
+    if (swapResult.originalFirst === initialElementId) {
+      change.finalElementId = swapResult.newFirst;
+    } else if (swapResult.originalSecond === initialElementId) {
+      change.finalElementId = swapResult.newSecond;
+    }
+
+    const updatedElement = document.querySelector(
+      `[data-id="${change.finalElementId}"]`
+    );
+    if (updatedElement) {
+      change.elementXPath = getXPath(updatedElement);
+      change.updatedAttributes = {};
+      Array.from(updatedElement.attributes).forEach((attr) => {
+        if (!EXTENSION_ATTRIBUTES.includes(attr.name)) {
+          change.updatedAttributes[attr.name] = attr.value;
+        }
+      });
+    }
+    elementChangeMap.set(initialElementId, change);
+  }
+  return change;
+}
+
+function getNewDepthId(element) {
+  const parts = [];
+  let current = element;
+  while (current) {
+    const parent = current.parentNode;
+    if (parent) {
+      const index = Array.from(parent.childNodes).indexOf(current);
+      parts.unshift(index);
+    }
+    current = parent;
+  }
+  return parts.join(".");
 }
 
 function activateLayerSelection() {
@@ -157,25 +164,15 @@ function deactivateLayerSelection() {
   document.querySelectorAll("*").forEach((element) => {
     element.style.outline = "none";
   });
-
   document.removeEventListener("mousedown", handleMouseDown);
   document.removeEventListener("drop", handleDrop);
-
   clearSelectedLayerStyles();
 }
 
 function handleMouseDown(event) {
   if (event.button !== 0) return;
-
   const targetElement = event.target;
-
-  if (isExcludedElement(targetElement)) {
-    return;
-  }
-
-  if (!targetElement.id) {
-    targetElement.id = `layer-${layerIdCounter++}`;
-  }
+  if (isExcludedElement(targetElement)) return;
 
   if (!shiftKeyDown && !ctrlKeyDown) {
     if (selectedLayers.has(targetElement)) {
@@ -264,19 +261,31 @@ function handleDrop(event) {
 
     if (draggedElements.length === 1) {
       const draggedElement = draggedElements[0];
-
       clearSelectedLayerStyles();
-      swapElements(draggedElement, dropTargetElement);
-      trackElementChange(draggedElement, "swap");
-      trackElementChange(dropTargetElement, "swap");
+
+      const swapResult = swapElements(draggedElement, dropTargetElement);
+
+      requestAnimationFrame(() => {
+        trackElementChange(draggedElement, "dragEnd", swapResult);
+      });
     } else {
       draggedElements.forEach((draggedElement) => {
         try {
+          const originalId = draggedElement.dataset.id;
           dropParent.insertBefore(
             draggedElement,
             dropTargetElement.nextSibling
           );
-          trackElementChange(draggedElement, "move");
+
+          requestAnimationFrame(() => {
+            assignUniqueIdsToDOM(document.body);
+            const movedElement = document.querySelector(
+              `[data-id="${draggedElement.dataset.id}"]`
+            );
+            if (movedElement) {
+              trackElementChange(movedElement, "move");
+            }
+          });
         } catch (error) {
           console.error("Error moving element:", error);
         }
@@ -285,6 +294,18 @@ function handleDrop(event) {
   }
 
   clearSelectedLayerStyles();
+}
+
+function saveToVersionHistory() {
+  const versionedChanges = {
+    timestamp: new Date().toISOString(),
+    changes: Array.from(elementChangeMap.values()).map((change) => ({
+      ...change,
+      finalElementId: change.finalElementId || change.elementId,
+    })),
+  };
+  versionHistory.push(versionedChanges);
+  return versionedChanges;
 }
 
 function monitorDOMChanges() {
@@ -315,89 +336,155 @@ function clearSelectedLayerStyles() {
 }
 
 function swapElements(firstElement, secondElement) {
+  const firstElementOriginalId = firstElement.dataset.id;
+  const secondElementOriginalId = secondElement.dataset.id;
+
   const clonedFirstElement = firstElement.cloneNode(true);
   const clonedSecondElement = secondElement.cloneNode(true);
 
   firstElement.parentNode.replaceChild(clonedSecondElement, firstElement);
   secondElement.parentNode.replaceChild(clonedFirstElement, secondElement);
-}
 
-function saveDOMChanges(customName, userId) {
-  captureModifiedDOMSnapshot();
+  assignUniqueIdsToDOM(document.body);
 
-  const url = window.location.href;
+  const swappedFirst = document.querySelector(
+    `[data-id="${secondElementOriginalId}"]`
+  );
+  const swappedSecond = document.querySelector(
+    `[data-id="${firstElementOriginalId}"]`
+  );
 
-  const data = {
-    userId,
-    url,
-    customName,
-    modifiedDOMSnapshot,
-    elementChanges,
+  return {
+    originalFirst: firstElementOriginalId,
+    originalSecond: secondElementOriginalId,
+    newFirst: swappedFirst?.dataset.id,
+    newSecond: swappedSecond?.dataset.id,
   };
-
-  fetch("http://localhost:5000/api/layers/save", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${userId}`,
-    },
-    body: JSON.stringify(data),
-  })
-    .then((response) => response.json())
-    .then((result) => {
-      chrome.runtime.sendMessage({ action: "loadSavedLayers" });
-      chrome.runtime.sendMessage({ action: "resetDomChanged" });
-    })
-    .catch((error) => {
-      console.error("Error saving DOM changes:", error);
-    });
 }
-
-monitorDOMChanges();
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "saveDOMChanges") {
-    saveDOMChanges(request.customName, request.userId);
+    const versionedChanges = {
+      timestamp: new Date().toISOString(),
+      changes: Array.from(elementChangeMap.values()),
+    };
+    versionHistory.push(versionedChanges);
+    sendResponse({
+      status: "success",
+      data: { saveDOMChanges: versionedChanges.changes },
+    });
+    return true;
   }
 
   if (request.action === "applySavedDOM") {
-    const { modifiedDOMSnapshot, elementChanges } = request;
-
-    if (modifiedDOMSnapshot) {
-      document.documentElement.innerHTML = modifiedDOMSnapshot;
-    }
+    const { elementChanges } = request;
+    let appliedCount = 0;
 
     elementChanges.forEach((change) => {
-      const element = document.evaluate(
-        change.newPosition.XPath,
-        document,
-        null,
-        XPathResult.FIRST_ORDERED_NODE_TYPE,
-        null
-      ).singleNodeValue;
+      let element = document.querySelector(`[data-id="${change.elementId}"]`);
 
       if (!element) {
-        console.warn(`요소를 찾을 수 없습니다: ${change.newPosition.XPath}`);
-        return;
-      }
-
-      change.newPosition.newStyles.forEach((style) => {
-        const [key, value] = style.split(":");
-        element.style[key.trim()] = value.trim();
-      });
-
-      const parentElement = document.getElementById(
-        change.newPosition.parentId
-      );
-      const prevSibling = document.getElementById(
-        change.newPosition.previousSiblingId
-      );
-      if (parentElement) {
-        parentElement.insertBefore(
-          element,
-          prevSibling ? prevSibling.nextSibling : null
+        element = document.querySelector(
+          `[data-id="${change.finalElementId}"]`
         );
       }
+
+      if (!element) {
+        element = getElementByXPath(change.elementXPath);
+      }
+
+      if (element) {
+        applyChanges(element, change);
+        appliedCount++;
+      }
     });
+
+    assignUniqueIdsToDOM(document.body);
+
+    sendResponse({
+      status: "success",
+      message: `Applied ${appliedCount} of ${elementChanges.length} changes`,
+    });
+    return true;
   }
 });
+
+function getElementByXPath(xpath) {
+  try {
+    return document.evaluate(
+      xpath,
+      document,
+      null,
+      XPathResult.FIRST_ORDERED_NODE_TYPE,
+      null
+    ).singleNodeValue;
+  } catch (error) {
+    console.error("Error finding element by XPath:", error);
+    return null;
+  }
+}
+
+function isAttributesMatch(element, updatedAttributes) {
+  return Object.entries(updatedAttributes).every(
+    ([attr, value]) => element.getAttribute(attr) === value
+  );
+}
+
+function applyChanges(element, change) {
+  if (!element) return;
+
+  const sourceElement = element;
+
+  const targetParent = document.evaluate(
+    change.elementXPath.substring(0, change.elementXPath.lastIndexOf("/")),
+    document,
+    null,
+    XPathResult.FIRST_ORDERED_NODE_TYPE,
+    null
+  ).singleNodeValue;
+
+  if (targetParent) {
+    const indexMatch = change.elementXPath.match(/\[(\d+)\]$/);
+    const targetIndex = indexMatch ? parseInt(indexMatch[1]) - 1 : 0;
+
+    const targetSiblings = Array.from(targetParent.children);
+    if (targetIndex >= 0 && targetIndex <= targetSiblings.length) {
+      const clonedElement = sourceElement.cloneNode(true);
+
+      if (change.finalElementId) {
+        clonedElement.dataset.id = change.finalElementId;
+      }
+
+      Object.entries(change.updatedAttributes).forEach(([attr, value]) => {
+        if (attr !== "data-id") {
+          clonedElement.setAttribute(attr, value);
+        }
+      });
+
+      Object.entries(change.updatedStyles).forEach(
+        ([styleProp, styleValue]) => {
+          clonedElement.style[styleProp] = styleValue;
+        }
+      );
+
+      clonedElement.style.transition = "background-color 0.5s ease";
+      clonedElement.style.backgroundColor = "rgba(255, 255, 0, 0.3)";
+
+      if (targetIndex >= targetSiblings.length) {
+        targetParent.appendChild(clonedElement);
+      } else {
+        targetParent.insertBefore(clonedElement, targetSiblings[targetIndex]);
+      }
+
+      sourceElement.remove();
+
+      setTimeout(() => {
+        clonedElement.style.backgroundColor = "";
+      }, 1000);
+    }
+  }
+}
+
+const versionHistory = [];
+
+monitorDOMChanges();

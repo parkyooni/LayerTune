@@ -5,7 +5,6 @@ document.addEventListener("DOMContentLoaded", () => {
     "toggleHighlightSwitch"
   );
   const undoButton = document.getElementById("undoButton");
-  const resetButton = document.getElementById("resetButton");
   const saveButton = document.getElementById("saveButton");
   const toggleLogin = document.getElementById("toggleLogin");
   const logoutButton = document.getElementById("logoutButton");
@@ -25,6 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let domChanged = false;
   let loggedIn = false;
   let layerToDelete = null;
+  let domChangesData = null;
 
   function updateSaveButtonState() {
     saveButton.disabled = !(loggedIn && domChanged);
@@ -92,7 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         chrome.runtime.sendMessage(
           { action: "toggleLayerHighlight", active: isActive },
-          (response) => {}
+          () => {}
         );
 
         updateLayerHighlight(isActive);
@@ -105,19 +105,15 @@ document.addEventListener("DOMContentLoaded", () => {
       domChanged = true;
       updateSaveButtonState();
     }
-
-    if (request.action === "resetDomChanged") {
-      domChanged = false;
-      updateSaveButtonState();
+    if (request.action === "saveDOMChanges") {
+      saveToAPI(request.data);
+      sendResponse({ status: "DOM changes received in popup" });
     }
   });
 
   toggleLogin.addEventListener("click", () => {
     chrome.identity.getAuthToken({ interactive: true }, (token) => {
-      if (chrome.runtime.lastError || !token) {
-        console.error("Login failed:", chrome.runtime.lastError);
-        return;
-      }
+      if (chrome.runtime.lastError || !token) return;
       fetchUserData(token);
     });
   });
@@ -147,9 +143,7 @@ document.addEventListener("DOMContentLoaded", () => {
         updateSaveButtonState();
         loadSavedLayers();
       })
-      .catch((error) => {
-        console.error("Error fetching user data:", error);
-      });
+      .catch((error) => {});
   }
 
   saveButton.addEventListener("click", () => {
@@ -167,40 +161,74 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    fetch(
+    checkDuplicateName(customName)
+      .then((exists) => {
+        if (
+          exists &&
+          !confirm("같은 이름의 저장된 레이어가 있습니다. 덮어쓰시겠습니까?")
+        ) {
+          return;
+        }
+        requestDOMChanges(customName);
+      })
+      .catch((error) => {
+        alert("저장 중 오류가 발생했습니다. 다시 시도해 주세요.");
+      });
+  });
+
+  function checkDuplicateName(customName) {
+    return fetch(
       `http://localhost:5000/api/layers/check/${encodeURIComponent(customName)}`
     )
       .then((response) => response.json())
-      .then((data) => {
-        if (data.exists) {
-          if (
-            confirm("같은 이름의 저장된 레이어가 있습니다. 덮어쓰시겠습니까?")
-          ) {
-            proceedWithSaving();
-          }
-        } else {
-          proceedWithSaving();
-        }
-      })
+      .then((data) => data.exists)
       .catch((error) => {
-        console.error("Error checking custom name:", error);
-        alert("저장 중 오류가 발생했습니다. 다시 시도해 주세요.");
+        throw error;
       });
+  }
 
-    function proceedWithSaving() {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        chrome.tabs.sendMessage(tabs[0].id, {
-          action: "saveDOMChanges",
-          customName: customName,
-          userId: userId,
-        });
-      });
+  function requestDOMChanges(customName) {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const currentTab = tabs[0];
+      const url = currentTab.url;
+      chrome.tabs.sendMessage(
+        currentTab.id,
+        { action: "saveDOMChanges", customName, userId, url },
+        {},
+        (response) => {
+          if (response && response.status === "success" && response.data) {
+            const { saveDOMChanges } = response.data;
+            saveToAPI({
+              elementChanges: saveDOMChanges,
+              customName,
+              userId,
+              url,
+            });
+          } else {
+            alert("DOM 데이터 전송 중 오류가 발생했습니다.");
+          }
+        }
+      );
+    });
+  }
 
-      savePopup.style.display = "none";
-      customNameInput.value = "";
-      loadSavedLayers();
-    }
-  });
+  function saveToAPI(data) {
+    const { customName, userId, url, elementChanges } = data;
+    fetch("http://localhost:5000/api/layers/save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${userId}`,
+      },
+      body: JSON.stringify({ customName, url, elementChanges, userId }),
+    })
+      .then((response) => response.json())
+      .then(() => {
+        loadSavedLayers();
+        alert("Changes saved successfully!");
+      })
+      .catch((error) => {});
+  }
 
   cancelSaveButton.addEventListener("click", () => {
     savePopup.style.display = "none";
@@ -210,12 +238,6 @@ document.addEventListener("DOMContentLoaded", () => {
   undoButton.addEventListener("click", () => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       chrome.tabs.sendMessage(tabs[0].id, { action: "undo" });
-    });
-  });
-
-  resetButton.addEventListener("click", () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      chrome.tabs.sendMessage(tabs[0].id, { action: "reset" });
     });
   });
 
@@ -273,14 +295,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
               if (listElementId === "currentUrlList") {
                 li.innerHTML = `
-              <div class="layer-list">
-                <span>${layer.customName}</span>
-                <div class="layer-footer">
-                  <span>${formatDate(layer.timestamp)}</span>
-                  <img src="icons/delete_icon.png" class="delete-icon" />
-                </div>
-              </div>`;
-
+                  <div class="layer-list">
+                    <span>${layer.customName}</span>
+                    <div class="layer-footer">
+                      <span>${formatDate(layer.timestamp)}</span>
+                      <img src="icons/delete_icon.png" class="delete-icon" />
+                    </div>
+                  </div>`;
                 li.addEventListener("click", () => {
                   clearActiveClassFromList();
                   li.classList.add("active");
@@ -290,7 +311,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     (tabs) => {
                       chrome.tabs.sendMessage(tabs[0].id, {
                         action: "applySavedDOM",
-                        modifiedDOMSnapshot: layer.modifiedDOMSnapshot,
                         elementChanges: layer.elementChanges,
                       });
                     }
@@ -298,24 +318,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
               } else if (listElementId === "allCustomList") {
                 li.innerHTML = `
-              <div class="layer-list">
-                <span>${layer.customName}</span>
-                <span>${formatDate(layer.timestamp)}</span>
-              </div>
-              <div class="layer-footer">
-                <p class="layer-url">${layer.url}</p>
-                <img src="icons/delete_icon.png" class="delete-icon" />
-              </div>`;
-
+                  <div class="layer-list">
+                    <span>${layer.customName}</span>
+                    <span>${formatDate(layer.timestamp)}</span>
+                  </div>
+                  <div class="layer-footer">
+                    <p class="layer-url">${layer.url}</p>
+                    <img src="icons/delete_icon.png" class="delete-icon" />
+                  </div>`;
                 li.addEventListener("click", () => {
                   navigator.clipboard
                     .writeText(layer.url)
                     .then(() => {
                       alert(`URL이 복사되었습니다: ${layer.url}`);
                     })
-                    .catch((err) => {
-                      console.error("URL 복사 중 오류가 발생했습니다:", err);
-                    });
+                    .catch((err) => {});
                 });
               }
 
@@ -331,7 +348,6 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         })
         .catch((error) => {
-          console.error(`Error loading layers from ${apiUrl}:`, error);
           const listElement = document.getElementById(listElementId);
           listElement.innerHTML = `<p>${emptyMessage}</p>`;
         });
@@ -365,7 +381,6 @@ document.addEventListener("DOMContentLoaded", () => {
         loadSavedLayers();
       })
       .catch((error) => {
-        console.error("Error deleting layer:", error);
         alert("삭제 중 문제가 발생했습니다. 다시 시도해 주세요.");
       });
   });

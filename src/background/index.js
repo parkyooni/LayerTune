@@ -9,9 +9,6 @@ chrome.commands.onCommand.addListener((command) => {
         case "undo":
           executeContentScript("undoAction");
           break;
-        case "reset":
-          executeContentScript("resetDOM");
-          break;
         case "save":
           executeContentScript("saveDOMChanges");
           break;
@@ -32,7 +29,7 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
   updateLayerHighlightState(activeInfo.tabId);
 });
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "complete") {
     updateLayerHighlightState(tabId);
   }
@@ -41,13 +38,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 function updateLayerHighlightState(tabId) {
   chrome.tabs.get(tabId, (tab) => {
     const currentUrl = new URL(tab.url).origin;
-
     chrome.storage.local.get(["layerHighlightState"], (result) => {
       const layerHighlightState = result.layerHighlightState || {};
       const isActive = layerHighlightState[currentUrl] || false;
-
       chrome.storage.local.set({ layerHighlightActive: isActive });
-
       chrome.tabs.sendMessage(tabId, {
         action: "updateLayerHighlight",
         active: isActive,
@@ -68,49 +62,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "toggleLayerHighlight") {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const currentUrl = new URL(tabs[0].url).origin;
-
       chrome.storage.local.get(["layerHighlightState"], (result) => {
         const layerHighlightState = result.layerHighlightState || {};
         layerHighlightState[currentUrl] = request.active;
-
         chrome.storage.local.set({
           layerHighlightState: layerHighlightState,
           layerHighlightActive: request.active,
         });
-
         chrome.tabs.sendMessage(tabs[0].id, {
           action: "updateLayerHighlight",
           active: request.active,
         });
-
         sendResponse({ status: "success" });
       });
     });
-    return true;
-  }
-
-  if (request.action === "captureOriginalDOM") {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      chrome.tabs.sendMessage(tabs[0].id, { action: "getDOM" }, (response) => {
-        sendResponse({ status: "success" });
-      });
-    });
-    return true;
-  }
-
-  if (request.action === "resetDOM") {
     return true;
   }
 });
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "saveDOMChanges") {
-    setTimeout(() => {
-      sendResponse({
-        status: "success",
-        message: "Changes saved successfully",
-      });
-    }, 1000);
+    chrome.runtime.sendMessage(request.data, (response) => {
+      sendResponse(response);
+    });
     return true;
   }
 });
