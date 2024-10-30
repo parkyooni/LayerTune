@@ -1,88 +1,103 @@
+import { MESSAGE_ACTION } from "../config/constant";
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({ layerHighlightState: {} });
 });
 
 chrome.commands.onCommand.addListener((command) => {
-  chrome.storage.local.get(["layerHighlightActive"], (result) => {
-    if (result.layerHighlightActive) {
-      switch (command) {
-        case "undo":
-          executeContentScript("undoAction");
-          break;
-        case "save":
-          executeContentScript("saveDOMChanges");
-          break;
-        default:
-          break;
+  chrome.storage.local.get(
+    "layerHighlightActive",
+    ({ layerHighlightActive }) => {
+      if (layerHighlightActive) {
+        const action =
+          command === "undo"
+            ? "undoAction"
+            : MESSAGE_ACTION.ACTION_SAVE_DOM_CHANGES;
+        executeContentScript(action);
       }
     }
-  });
+  );
 });
 
-chrome.tabs.onActivated.addListener((activeInfo) => {
-  updateLayerHighlightState(activeInfo.tabId);
+chrome.tabs.onActivated.addListener(({ tabId }) =>
+  updateLayerHighlightState(tabId)
+);
+chrome.tabs.onUpdated.addListener((tabId, { status }) => {
+  if (status === "complete") updateLayerHighlightState(tabId);
 });
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (changeInfo.status === "complete") {
-    updateLayerHighlightState(tabId);
-  }
-});
-
-function updateLayerHighlightState(tabId) {
+const updateLayerHighlightState = (tabId) => {
   chrome.tabs.get(tabId, (tab) => {
-    const currentUrl = new URL(tab.url).origin;
-    chrome.storage.local.get(["layerHighlightState"], (result) => {
-      const layerHighlightState = result.layerHighlightState || {};
-      const isActive = layerHighlightState[currentUrl] || false;
-      chrome.storage.local.set({ layerHighlightActive: isActive });
-      chrome.tabs.sendMessage(tabId, {
-        action: "updateLayerHighlight",
-        active: isActive,
-      });
-    });
+    if (tab.url) {
+      const currentUrl = new URL(tab.url).origin;
+      chrome.storage.local.get(
+        "layerHighlightState",
+        ({ layerHighlightState = {} }) => {
+          const isActive = layerHighlightState[currentUrl] || false;
+          chrome.storage.local.set({ layerHighlightActive: isActive });
+          chrome.tabs.sendMessage(tabId, {
+            action: MESSAGE_ACTION.ACTION_UPDATE_LAYER_HIGHLIGHT,
+            active: isActive,
+          });
+        }
+      );
+    }
   });
-}
+};
 
-function executeContentScript(action) {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    chrome.tabs.sendMessage(tabs[0].id, { action: action });
+const executeContentScript = (action) => {
+  chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+    if (tab?.id) {
+      chrome.tabs.sendMessage(tab.id, { action });
+    }
   });
-}
+};
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "getCurrentTabUrl") {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const currentUrl = new URL(tabs[0].url).href;
-      sendResponse({ url: currentUrl });
-    });
-    return true;
-  }
+  switch (request.action) {
+    case MESSAGE_ACTION.ACTION_GET_CURRENT_TAB_URL:
+      getCurrentTabUrl(sendResponse);
+      break;
 
-  if (request.action === "toggleLayerHighlight") {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const currentUrl = new URL(tabs[0].url).origin;
-      chrome.storage.local.get(["layerHighlightState"], (result) => {
-        const layerHighlightState = result.layerHighlightState || {};
-        layerHighlightState[currentUrl] = request.active;
-        chrome.storage.local.set({
-          layerHighlightState: layerHighlightState,
-          layerHighlightActive: request.active,
-        });
-        chrome.tabs.sendMessage(tabs[0].id, {
-          action: "updateLayerHighlight",
-          active: request.active,
-        });
-        sendResponse({ status: "success" });
-      });
-    });
-    return true;
-  }
+    case MESSAGE_ACTION.ACTION_TOGGLE_LAYER_HIGHLIGHT:
+      toggleLayerHighlight(request.active, sendResponse);
+      break;
 
-  if (request.action === "saveDOMChanges") {
-    chrome.runtime.sendMessage(request.data, (response) => {
-      sendResponse(response);
-    });
-    return true;
+    case MESSAGE_ACTION.ACTION_SAVE_DOM_CHANGES:
+      chrome.runtime.sendMessage(request.data, sendResponse);
+      break;
+
+    default:
+      break;
   }
+  return true;
 });
+
+const getCurrentTabUrl = (sendResponse) => {
+  chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+    sendResponse({ url: new URL(tab.url).href });
+  });
+};
+
+const toggleLayerHighlight = (active, sendResponse) => {
+  chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+    if (tab?.url) {
+      const currentUrl = new URL(tab.url).origin;
+      chrome.storage.local.get(
+        "layerHighlightState",
+        ({ layerHighlightState = {} }) => {
+          layerHighlightState[currentUrl] = active;
+          chrome.storage.local.set({
+            layerHighlightState,
+            layerHighlightActive: active,
+          });
+          chrome.tabs.sendMessage(tab.id, {
+            action: MESSAGE_ACTION.ACTION_UPDATE_LAYER_HIGHLIGHT,
+            active,
+          });
+          sendResponse({ status: "success" });
+        }
+      );
+    }
+  });
+};

@@ -1,245 +1,275 @@
-import { api } from "../common/app.js";
-import { formatDate } from "../common/utils";
-import { state } from "../common/state.js";
+import { api } from "../api";
+import { state, appState } from "../common/state";
+import {
+  STYLE,
+  DOM_IDS,
+  CLASS_NAMES,
+  MESSAGE_ACTION,
+  MESSAGES,
+} from "../config/constant";
+import { formatDate, elements } from "../utils";
 
 document.addEventListener("DOMContentLoaded", () => {
-  const toggleHighlightSwitch = document.getElementById(
-    "toggleHighlightSwitch"
-  );
-  const undoButton = document.getElementById("undoButton");
-  const saveButton = document.getElementById("saveButton");
-  const toggleLogin = document.getElementById("toggleLogin");
-  const logoutButton = document.getElementById("logoutButton");
-  const userNameSpan = document.getElementById("userName");
-  const customNameInput = document.getElementById("customName");
-  const confirmSaveButton = document.getElementById("confirmSave");
-  const savePopup = document.getElementById("savePopup");
-  const cancelSaveButton = document.getElementById("cancelSave");
-  const deleteConfirmPopup = document.getElementById("deleteConfirmPopup");
-  const confirmDeleteButton = document.getElementById("confirmDelete");
-  const cancelDeleteButton = document.getElementById("cancelDelete");
-  const tabButtons = document.querySelectorAll(".tab-button");
-  const tabContents = document.querySelectorAll(".custom-list");
+  const toggleHighlightSwitch = elements.TOGGLE_HIGHLIGHT_SWITCH;
+  const toggleLogin = elements.TOGGLE_LOGIN;
+  const userNameSpan = elements.USER_NAME;
+  const userInfo = elements.USER_INFO;
+  const customNameInput = elements.CUSTOM_NAME_INPUT;
+  const undoButton = elements.UNDO_BUTTON;
+  const saveButton = elements.SAVE_BUTTON;
+  const logoutButton = elements.LOGOUT_BUTTON;
+  const confirmSaveButton = elements.CONFIRM_SAVE_BUTTON;
+  const cancelSaveButton = elements.CANCEL_SAVE_BUTTON;
+  const confirmDeleteButton = elements.CONFIRM_DELETE_BUTTON;
+  const cancelDeleteButton = elements.CANCEL_DELETE_BUTTON;
+  const tabButtons = elements.TAB_BUTTON;
+  const tabContents = elements.CUSTOM_LIST;
+  const currentUrlList = elements.CURRENT_URL_LIST;
+  const savePopup = elements.SAVE_POPUP;
+  const deleteConfirmPopup = elements.DELETE_CONFIRM_POPUP;
 
-  let userId = null;
-  let currentUrl = null;
-  let loggedIn = false;
-  let layerToDelete = null;
-
-  chrome.storage.local.get(["userId", "userName"], (result) => {
-    loggedIn = !!result.userId;
+  chrome.storage.local.get(["userId", "userName"], ({ userId, userName }) => {
+    const isLoggedIn = !!userId;
+    appState.loggedIn = isLoggedIn;
     state.domChanged = false;
     updateSaveButtonState();
-    if (loggedIn) {
-      userId = result.userId;
-      userNameSpan.textContent = result.userName;
-      document.getElementById("userInfo").style.display = "block";
-      toggleLogin.style.display = "none";
+
+    userInfo.style.display = isLoggedIn ? STYLE.STYLE_BLOCK : STYLE.STYLE_NONE;
+    toggleLogin.style.display = isLoggedIn
+      ? STYLE.STYLE_NONE
+      : STYLE.STYLE_BLOCK;
+
+    if (isLoggedIn) {
+      appState.userId = userId;
+      userNameSpan.textContent = userName;
       loadSavedLayers();
     } else {
-      document.getElementById("userInfo").style.display = "none";
-      toggleLogin.style.display = "block";
       showLoginMessage();
     }
   });
 
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    currentUrl = new URL(tabs[0].url).href;
+    const currentTabUrl = new URL(tabs[0].url).href;
+    appState.currentUrl = currentTabUrl;
 
-    chrome.storage.local.get(["layerHighlightState"], (result) => {
-      const urlState = result.layerHighlightState || {};
-      toggleHighlightSwitch.checked = !!urlState[currentUrl];
-      updateLayerHighlight(!!urlState[currentUrl]);
-    });
+    chrome.storage.local.get(
+      { layerHighlightState: {} },
+      ({ layerHighlightState }) => {
+        const currentUrlState = !!layerHighlightState[currentTabUrl];
+        toggleHighlightSwitch.checked = currentUrlState;
+        updateLayerHighlight(currentUrlState);
 
-    toggleHighlightSwitch.addEventListener("change", (e) => {
-      const isActive = e.target.checked;
-
-      chrome.storage.local.get(["layerHighlightState"], (result) => {
-        const urlState = result.layerHighlightState || {};
-        urlState[currentUrl] = isActive;
-        chrome.storage.local.set({ layerHighlightState: urlState });
-
-        chrome.runtime.sendMessage(
-          { action: "toggleLayerHighlight", active: isActive },
-          () => {}
+        chrome.tabs.sendMessage(
+          tabs[0].id,
+          { action: MESSAGE_ACTION.ACTION_GET_DOM_CHANGED_STATUS },
+          ({ domChanged } = {}) => {
+            if (domChanged) {
+              state.domChanged = domChanged;
+              updateSaveButtonState();
+            }
+          }
         );
-
-        updateLayerHighlight(isActive);
-      });
-    });
-
-    chrome.tabs.sendMessage(
-      tabs[0].id,
-      { action: "getDomChangedStatus" },
-      (response) => {
-        if (response && response.domChanged) {
-          state.domChanged = response.domChanged;
-          updateSaveButtonState();
-        }
       }
     );
   });
 
-  chrome.runtime.onMessage.addListener((request) => {
-    if (request.action === "domChanged") {
-      state.domChanged = true;
-      updateSaveButtonState();
-    }
+  toggleHighlightSwitch.addEventListener(
+    "change",
+    ({ target: { checked: isActive } }) => {
+      chrome.storage.local.get(
+        { layerHighlightState: {} },
+        ({ layerHighlightState }) => {
+          layerHighlightState[appState.currentUrl] = isActive;
 
-    if (request.action === "saveDOMChanges") {
-      saveToAPI(request.data);
-      sendResponse({ status: "DOM changes received in popup" });
+          chrome.storage.local.set({ layerHighlightState });
+
+          chrome.runtime.sendMessage({
+            action: MESSAGE_ACTION.ACTION_TOGGLE_LAYER_HIGHLIGHT,
+            active: isActive,
+          });
+
+          updateLayerHighlight(isActive);
+        }
+      );
+    }
+  );
+
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    switch (request.action) {
+      case MESSAGE_ACTION.ACTION_DOM_CHANGED:
+        state.domChanged = true;
+        updateSaveButtonState();
+        break;
+
+      case MESSAGE_ACTION.ACTION_SAVE_DOM_CHANGES:
+        saveToAPI(request.data);
+        sendResponse({ status: "DOM changes received in popup" });
+        break;
     }
   });
 
-  function updateSaveButtonState() {
-    saveButton.disabled = !(loggedIn && state.domChanged);
-  }
+  const updateSaveButtonState = () => {
+    saveButton.disabled = !(appState.loggedIn && state.domChanged);
+  };
 
-  function clearActiveClassFromList() {
-    const listItems = document.querySelectorAll("#currentUrlList li");
-    listItems.forEach((item) => item.classList.remove("active"));
-  }
+  const clearActiveClassFromList = () => {
+    const currentListItems = document.querySelectorAll("#currentUrlList li");
+    for (const item of currentListItems) {
+      item.classList.remove(CLASS_NAMES.ACTIVE);
+    }
+  };
 
-  function updateLayerHighlight(isActive) {
+  const applyLayerHighlight = (active) => {
+    document.querySelectorAll("*").forEach((el) => {
+      const shouldHighlight =
+        active && (el.children.length > 0 || el.textContent.trim() === "");
+      el.style.outline = shouldHighlight
+        ? STYLE.OUTLINE_DASHED_STYLE
+        : STYLE.STYLE_NONE;
+    });
+  };
+
+  const updateLayerHighlight = (isActive) => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       chrome.scripting.executeScript({
         target: { tabId: tabs[0].id },
-        function: (active) => {
-          document.querySelectorAll("*").forEach((el) => {
-            if (
-              active &&
-              (el.children.length > 0 || el.textContent.trim() === "")
-            ) {
-              el.style.outline = "1px dashed var(--border-color)";
-            } else {
-              el.style.outline = "none";
-            }
-          });
-        },
+        function: applyLayerHighlight,
         args: [isActive],
       });
     });
-  }
+  };
 
   toggleLogin.addEventListener("click", () => {
     chrome.identity.getAuthToken({ interactive: true }, (token) => {
-      if (chrome.runtime.lastError || !token) return;
+      if (!token) {
+        return console.error(
+          "인증 토큰을 가져오는 데 실패했습니다",
+          chrome.runtime.lastError
+        );
+      }
       fetchUserData(token);
     });
   });
 
   logoutButton.addEventListener("click", () => {
-    userId = null;
-    loggedIn = false;
-    chrome.storage.local.remove(["userId", "userName"]);
-    document.getElementById("userInfo").style.display = "none";
-    toggleLogin.style.display = "block";
-    updateSaveButtonState();
-    showLoginMessage();
+    appState.userId = null;
+    appState.loggedIn = false;
+
+    chrome.storage.local.remove(["userId", "userName"], () => {
+      if (chrome.runtime.lastError) {
+        return console.error(
+          "사용자 정보를 삭제하는 데 실패했습니다.",
+          chrome.runtime.lastError
+        );
+      }
+
+      userInfo.style.display = STYLE.STYLE_NONE;
+      toggleLogin.style.display = STYLE.STYLE_BLOCK;
+      updateSaveButtonState();
+      showLoginMessage();
+    });
   });
 
-  async function fetchUserData(token) {
+  const fetchUserData = async (token) => {
     try {
       const user = await api.fetchUserInfo(token);
-      userId = user.id;
-      loggedIn = true;
-      userNameSpan.textContent = user.name;
-      document.getElementById("userInfo").style.display = "block";
-      toggleLogin.style.display = "none";
 
-      await chrome.storage.local.set({ userId: user.id, userName: user.name });
+      appState.userId = user.id;
+      appState.loggedIn = true;
+
+      userNameSpan.textContent = user.name;
+      userInfo.style.display = STYLE.STYLE_BLOCK;
+      toggleLogin.style.display = STYLE.STYLE_NONE;
+
+      chrome.storage.local.set({ userId: user.id, userName: user.name });
+
       updateSaveButtonState();
       loadSavedLayers();
     } catch (error) {
-      console.error("Login failed:", error);
+      console.error("로그인에 실패했습니다.", error);
     }
-  }
+  };
 
   saveButton.addEventListener("click", () => {
-    if (!loggedIn) {
-      alert("로그인이 필요합니다.");
-      return;
-    }
-    savePopup.style.display = "block";
+    if (!appState.loggedIn) return alert(MESSAGES.LOGIN_REQUIRED_ALERT);
+
+    savePopup.style.display = STYLE.STYLE_BLOCK;
   });
 
-  confirmSaveButton.addEventListener("click", () => {
+  confirmSaveButton.addEventListener("click", async () => {
     const customName = customNameInput.value.trim();
+
     if (!customName) {
-      alert("이름을 입력해주세요.");
-      return;
+      return alert(MESSAGES.NAME_REQUIRED_ALERT);
     }
 
-    checkDuplicateName(customName)
-      .then((exists) => {
-        if (
-          exists &&
-          !confirm("같은 이름의 저장된 레이어가 있습니다. 덮어쓰시겠습니까?")
-        ) {
-          return;
-        }
-        requestDOMChanges(customName);
-      })
-      .catch((error) => {
-        alert("저장 중 오류가 발생했습니다. 다시 시도해 주세요.");
-      });
+    try {
+      const exists = await checkDuplicateName(customName);
+      if (exists && !confirm(MESSAGES.DUPLICATE_WARNING)) return;
+
+      requestDOMChanges(customName);
+    } catch (error) {
+      alert(MESSAGES.SAVE_FAILED_ALERT);
+    }
   });
 
-  async function checkDuplicateName(customName) {
+  const checkDuplicateName = async (customName) => {
     try {
-      const exists = await api.checkDuplicateName(customName);
-      return exists;
+      return await api.checkDuplicateName(customName);
     } catch (error) {
-      console.error("Check duplicate name failed:", error);
-      alert("이름 중복 확인 중 오류가 발생했습니다.");
+      console.error(MESSAGES.CHECK_NAME_FAILED_ALERT, error);
+      alert(MESSAGES.CHECK_NAME_FAILED_ALERT);
       throw error;
     }
-  }
+  };
 
-  function requestDOMChanges(customName) {
+  const requestDOMChanges = (customName) => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const currentTab = tabs[0];
-      const url = currentTab.url;
+      const { id: tabId, url } = tabs[0];
 
       chrome.tabs.sendMessage(
-        currentTab.id,
-        { action: "saveDOMChanges", customName, userId, url },
+        tabId,
+        {
+          action: MESSAGE_ACTION.ACTION_SAVE_DOM_CHANGES,
+          customName,
+          userId: appState.userId,
+          url,
+        },
         {},
         async (response) => {
-          if (response && response.status === "success" && response.data) {
+          if (response?.status === "success" && response.data?.saveDOMChanges) {
             try {
-              const { saveDOMChanges } = response.data;
               await saveToAPI({
-                elementChanges: saveDOMChanges,
+                elementChanges: response.data.saveDOMChanges,
                 customName,
-                userId,
+                userId: appState.userId,
                 url,
               });
             } catch (error) {
-              console.error("Failed to save changes:", error);
-              alert("저장 중 오류가 발생했습니다. 다시 시도해 주세요.");
+              console.error(MESSAGES.SAVE_FAILED_ALERT, error);
+              alert(MESSAGES.SAVE_FAILED_ALERT);
             }
           } else {
-            alert("DOM 데이터 전송 중 오류가 발생했습니다.");
+            alert(MESSAGES.DOM_DATA_FAILED_ALERT);
           }
         }
       );
     });
-  }
+  };
 
-  async function saveToAPI(data) {
+  const saveToAPI = async (data) => {
     try {
       await api.saveLayer(data);
       await loadSavedLayers();
-      savePopup.style.display = "none";
+
+      savePopup.style.display = STYLE.STYLE_NONE;
       customNameInput.value = "";
       toggleHighlightSwitch.checked = false;
       state.domChanged = false;
+
       chrome.storage.local.get(["layerHighlightState"], (result) => {
         const urlState = result.layerHighlightState || {};
-        urlState[currentUrl] = false;
+        urlState[appState.currentUrl] = false;
         chrome.storage.local.set({ layerHighlightState: urlState });
       });
 
@@ -247,86 +277,82 @@ document.addEventListener("DOMContentLoaded", () => {
         chrome.tabs.reload(tabs[0].id);
       });
     } catch (error) {
-      console.error("Save failed:", error);
-      alert("저장 중 오류가 발생했습니다. 다시 시도해 주세요.");
+      console.error(MESSAGES.SAVE_FAILED_ALERT, error);
+      alert(MESSAGES.SAVE_FAILED_ALERT);
     }
-  }
+  };
 
   cancelSaveButton.addEventListener("click", () => {
-    savePopup.style.display = "none";
+    savePopup.style.display = STYLE.STYLE_NONE;
     customNameInput.value = "";
   });
 
   undoButton.addEventListener("click", () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      chrome.tabs.sendMessage(tabs[0].id, { action: "undo" });
-    });
+    chrome.tabs.query(
+      { active: true, currentWindow: true },
+      ([{ id: tabId }]) => {
+        chrome.tabs.sendMessage(tabId, { action: "undo" });
+      }
+    );
   });
 
   tabButtons.forEach((button) => {
     button.addEventListener("click", () => {
       const targetTab = button.getAttribute("data-tab");
 
-      tabButtons.forEach((btn) => btn.classList.remove("active"));
-      button.classList.add("active");
+      tabButtons.forEach((btn) =>
+        btn.classList.toggle(CLASS_NAMES.ACTIVE, btn === button)
+      );
+
       tabContents.forEach((content) => {
-        content.style.display = "none";
+        content.style.display = STYLE.STYLE_NONE;
       });
+      document.getElementById(`${targetTab}List`).style.display =
+        STYLE.STYLE_BLOCK;
 
-      document.getElementById(`${targetTab}List`).style.display = "block";
-
-      if (loggedIn) {
-        loadSavedLayers();
-      } else {
-        showLoginMessage();
-      }
+      appState.loggedIn ? loadSavedLayers() : showLoginMessage();
     });
   });
 
-  document.getElementById("currentUrlList").style.display = "block";
+  currentUrlList.style.display = STYLE.STYLE_BLOCK;
 
   const createListItem = (layer, listElementId) => {
     const li = document.createElement("li");
 
-    if (listElementId === "currentUrlList") {
-      li.innerHTML = `
-      <div class="layer-list">
-        <span>${layer.customName}</span>
-        <div class="layer-footer">
-          <span>${formatDate(layer.timestamp)}</span>
-          <img src="icons/delete_icon.png" class="delete-icon" />
-        </div>
-      </div>`;
+    const layerContent = `
+    <div class="layer-list">
+      <span>${layer.customName}</span>
+      <div class="layer-footer">
+        <span>${formatDate(layer.timestamp)}</span>
+        <img src="/icons/delete_icon.png" class="delete-icon" />
+      </div>
+    </div>`;
 
+    li.innerHTML =
+      listElementId === "allCustomList"
+        ? `${layerContent}<p class="layer-url">${layer.url}</p>`
+        : layerContent;
+
+    if (listElementId === "currentUrlList") {
       li.addEventListener("click", () => {
         clearActiveClassFromList();
-        li.classList.add("active");
+        li.classList.add(CLASS_NAMES.ACTIVE);
 
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           chrome.tabs.sendMessage(tabs[0].id, {
-            action: "applySavedDOM",
+            action: MESSAGE_ACTION.ACTION_APPLY_SAVED_DOM,
             elementChanges: layer.elementChanges,
           });
         });
       });
     } else if (listElementId === "allCustomList") {
-      li.innerHTML = `
-      <div class="layer-list">
-        <span>${layer.customName}</span>
-        <span>${formatDate(layer.timestamp)}</span>
-      </div>
-      <div class="layer-footer">
-        <p class="layer-url">${layer.url}</p>
-        <img src="icons/delete_icon.png" class="delete-icon" />
-      </div>`;
-
       li.addEventListener("click", async () => {
         try {
           await navigator.clipboard.writeText(layer.url);
-          alert(`URL이 복사되었습니다: ${layer.url}`);
+          alert(MESSAGES.URL_COPIED_ALERT(layer.url));
         } catch (err) {
-          console.error("Failed to copy URL:", err);
-          alert("URL 복사에 실패했습니다.");
+          console.error(MESSAGES.FAILED_COPY_ALERT, err);
+          alert(MESSAGES.FAILED_COPY_ALERT);
         }
       });
     }
@@ -334,8 +360,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const deleteIcon = li.querySelector(".delete-icon");
     deleteIcon.addEventListener("click", (event) => {
       event.stopPropagation();
-      deleteConfirmPopup.style.display = "block";
-      layerToDelete = layer._id;
+      deleteConfirmPopup.style.display = STYLE.STYLE_BLOCK;
+      appState.layerToDelete = layer._id;
     });
 
     return li;
@@ -343,69 +369,72 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const updateList = (listElementId, layers, emptyMessage) => {
     const listElement = document.getElementById(listElementId);
-    listElement.innerHTML = "";
 
     if (!layers || layers.length === 0) {
-      listElement.innerHTML = `<p class="empty-list">${emptyMessage}</p>`;
-      return;
+      return (listElement.innerHTML = `<p class="empty-list">${emptyMessage}</p>`);
     }
 
-    layers.forEach((layer) => {
-      const li = createListItem(layer, listElementId);
-      listElement.appendChild(li);
+    const listItems = layers.map((layer) =>
+      createListItem(layer, listElementId)
+    );
+    listElement.replaceChildren(...listItems);
+  };
+
+  const loadSavedLayers = async () => {
+    if (!appState.userId) return;
+
+    try {
+      const [currentUrlLayers, allCustomLayers] = await Promise.all([
+        api.getLayersByUrl(appState.currentUrl, appState.userId),
+        api.getAllLayers(appState.userId),
+      ]);
+
+      updateList(
+        DOM_IDS.CURRENT_URL_LIST,
+        currentUrlLayers,
+        MESSAGES.NO_CONTENT
+      );
+
+      updateList(DOM_IDS.ALL_CUSTOM_LIST, allCustomLayers, MESSAGES.NO_CONTENT);
+    } catch (error) {
+      console.error("조회 실패했습니다.", error);
+      showErrorMessage();
+    }
+  };
+
+  const showLoginMessage = () => {
+    const messageHTML = `<p class="${CLASS_NAMES.EMPTY_LIST_MESSAGE}">${MESSAGES.LOGIN_REQUIRED}</p>`;
+    const lists = [DOM_IDS.CURRENT_URL_LIST, DOM_IDS.ALL_CUSTOM_LIST];
+
+    lists.forEach((listId) => {
+      document.getElementById(listId).innerHTML = messageHTML;
     });
   };
 
-  async function loadSavedLayers() {
-    if (!userId) return;
+  const showErrorMessage = () => {
+    const errorMessageHTML = `<p class="${CLASS_NAMES.EMPTY_LIST_MESSAGE}">${MESSAGES.LOAD_FAILED}</p>`;
+    const lists = [DOM_IDS.CURRENT_URL_LIST, DOM_IDS.ALL_CUSTOM_LIST];
 
-    try {
-      const currentUrlLayers = await api.getLayersByUrl(currentUrl, userId);
-      updateList(
-        "currentUrlList",
-        currentUrlLayers,
-        "저장된 콘텐츠가 없습니다."
-      );
-
-      const allCustomLayers = await api.getAllLayers(userId);
-      updateList("allCustomList", allCustomLayers, "저장된 콘텐츠가 없습니다.");
-    } catch (error) {
-      console.error("Failed to load layers:", error);
-      showErrorMessage();
-    }
-  }
-
-  function showLoginMessage() {
-    const lists = ["currentUrlList", "allCustomList"];
     lists.forEach((listId) => {
-      const listElement = document.getElementById(listId);
-      listElement.innerHTML = `<p class="empty-list">로그인 해주세요.</p>`;
+      document.getElementById(listId).innerHTML = errorMessageHTML;
     });
-  }
-
-  function showErrorMessage() {
-    const lists = ["currentUrlList", "allCustomList"];
-    lists.forEach((listId) => {
-      const listElement = document.getElementById(listId);
-      listElement.innerHTML = `<p class="empty-list">데이터를 불러오는데 실패했습니다.</p>`;
-    });
-  }
+  };
 
   confirmDeleteButton.addEventListener("click", async () => {
-    if (!layerToDelete) return;
+    if (!appState.layerToDelete) return;
 
     try {
-      await api.deleteLayer(layerToDelete);
-      deleteConfirmPopup.style.display = "none";
+      await api.deleteLayer(appState.layerToDelete);
+      deleteConfirmPopup.style.display = STYLE.STYLE_NONE;
       await loadSavedLayers();
     } catch (error) {
-      console.error("Delete failed:", error);
-      alert("삭제 중 문제가 발생했습니다. 다시 시도해 주세요.");
+      console.error(MESSAGES.DELETE_FAILED_ALERT, error);
+      alert(MESSAGES.DELETE_FAILED_ALERT);
     }
   });
 
   cancelDeleteButton.addEventListener("click", () => {
-    deleteConfirmPopup.style.display = "none";
-    layerToDelete = null;
+    deleteConfirmPopup.style.display = STYLE.STYLE_NONE;
+    appState.layerToDelete = null;
   });
 });

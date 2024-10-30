@@ -4,15 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LayerTune Popup</title>
-    <link rel="stylesheet" href="styles/style.css" />
-    <script type="text/javascript" src="index.js"></script>
+    <link rel="stylesheet" href="../styles/style.css" />
   </head>
 
   <body class="extension-popup">
     <div class="container">
       <div class="header">
         <span class="logo">
-          <img src="icons/icon48.png" alt="logo" />
+          <img src="/icons/icon48.png" alt="logo" />
           <span>LayerTune</span>
         </span>
         <div class="menu">
@@ -21,7 +20,11 @@
             <button id="logoutButton">로그아웃</button>
           </div>
           <button id="toggleLogin">로그인</button>
-          <img src="icons/about_icon.png" alt="About Icon" class="about-icon" />
+          <img
+            src="/icons/about_icon.png"
+            alt="About Icon"
+            class="about-icon"
+          />
           <div class="about-tooltip">
             <ul>
               <li>
@@ -93,7 +96,7 @@
     <div id="savePopup" class="popup">
       <div class="popup-content">
         <button id="cancelSave">
-          <img src="icons/close_icon.png" alt="close" />
+          <img src="/icons/close_icon.png" alt="close" />
         </button>
         <p>커스텀 저장</p>
         <input type="text" id="customName" placeholder="커스텀 이름 입력" />
@@ -104,12 +107,13 @@
     <div id="deleteConfirmPopup" class="popup">
       <div class="popup-content">
         <button id="cancelDelete">
-          <img src="icons/close_icon.png" alt="close" />
+          <img src="/icons/close_icon.png" alt="close" />
         </button>
         <p>삭제 확인</p>
         <span>정말로 이 레이어를 삭제하시겠습니까?</span>
         <button id="confirmDelete">확인</button>
       </div>
     </div>
+    <script type="module" src="./index.js"></script>
   </body>
 </html>
