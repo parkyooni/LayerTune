@@ -15,10 +15,9 @@
   "license": "ISC",
   "devDependencies": {
     "@samrum/vite-plugin-web-extension": "^5.1.1",
-    "css-loader": "^7.1.2",
     "dotenv": "^16.4.5",
     "prettier": "^3.0.0",
-    "style-loader": "^4.0.0",
+    "sass": "^1.80.6",
     "vite": "^5.4.10"
   }
 }

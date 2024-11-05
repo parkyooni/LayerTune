@@ -1,0 +1,21 @@
+@use "variables" as theme;
+
+ul,
+li {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+@mixin flexbox($direction: row, $justify: flex-start, $align: stretch) {
+  display: flex;
+  flex-direction: $direction;
+  justify-content: $justify;
+  align-items: $align;
+}
+
+@mixin transition($properties...) {
+  @each $property in $properties {
+    transition: $property theme.$transition-duration theme.$transition-timing;
+  }
+}

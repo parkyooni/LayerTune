@@ -1,3 +1,4 @@
+import "../styles/index.scss";
 import { state, interactionState } from "../common/state";
 import {
   STYLE,
@@ -314,10 +315,6 @@ const monitorDOMChanges = () => {
     attributes: true,
     childList: true,
     subtree: true,
-  });
-
-  requestAnimationFrame(() => {
-    initialLoadComplete = true;
   });
 };
 

@@ -1,3 +1,4 @@
+import "../styles/index.scss";
 import { api } from "../api";
 import { state, appState } from "../common/state";
 import {
@@ -97,7 +98,6 @@ document.addEventListener("DOMContentLoaded", () => {
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     switch (request.action) {
       case MESSAGE_ACTION.ACTION_DOM_CHANGED:
-        state.domChanged = true;
         updateSaveButtonState();
         break;
 
@@ -109,6 +109,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const updateSaveButtonState = () => {
+    console.log(
+      "appState.loggedIn && state.domChanged",
+      appState.loggedIn && state.domChanged
+    );
     saveButton.disabled = !(appState.loggedIn && state.domChanged);
   };
 
@@ -330,7 +334,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     li.innerHTML =
       listElementId === "allCustomList"
-        ? `${layerContent}<p class="layer-url">${layer.url}</p>`
+        ? `${layerContent}<span class="layer-url">${layer.url}</span>`
         : layerContent;
 
     if (listElementId === "currentUrlList") {

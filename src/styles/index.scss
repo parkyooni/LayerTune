@@ -1,0 +1,349 @@
+@use "variables" as theme;
+@use "base" as base;
+
+button {
+  padding: 0.625rem;
+  border: none;
+  cursor: pointer;
+  transition:
+    opacity theme.$transition-duration theme.$transition-timing,
+    background-color theme.$transition-duration theme.$transition-timing;
+}
+
+body.extension-popup {
+  @include base.flexbox(column);
+  width: 21.875rem;
+  height: 26rem;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  background-color: theme.$popup-color;
+
+  .container {
+    @include base.flexbox(column);
+    flex-grow: 1;
+
+    .header {
+      box-sizing: border-box;
+      @include base.flexbox(row, space-between, center);
+      width: 100%;
+      height: 3.125rem;
+      padding: 0 0.625rem 0 0.9375rem;
+      background-color: theme.$font-color-white;
+
+      .logo {
+        @include base.flexbox(row, flex-start, center);
+        color: theme.$font-color;
+        cursor: default;
+
+        img {
+          width: 1.875rem;
+          margin-right: 0.3125rem;
+        }
+      }
+
+      .menu {
+        position: relative;
+        @include base.flexbox(row, space-between, center);
+        min-width: 5.625rem;
+
+        img {
+          display: inline-block;
+          width: 1.25rem;
+          height: 1.25rem;
+          margin-left: 0.1875rem;
+          cursor: pointer;
+
+          &:hover + .about-tooltip {
+            display: block;
+          }
+        }
+
+        #userInfo {
+          display: none;
+
+          span {
+            padding-right: 0.125rem;
+            cursor: default;
+          }
+
+          button {
+            padding: 0.3125rem 0.625rem;
+            border-radius: 0.3125rem;
+            color: theme.$font-color-white;
+            background-color: theme.$point-color;
+          }
+        }
+
+        button#toggleLogin {
+          padding: 0.3125rem 0.625rem;
+          border-radius: 0.3125rem;
+          color: theme.$font-color-white;
+          background-color: theme.$point-color;
+        }
+
+        .about-tooltip {
+          display: none;
+          position: absolute;
+          top: 0;
+          right: 23px;
+          width: 230px;
+          padding: 10px;
+          border: 1px solid theme.$border-color;
+          border-radius: 5px;
+          box-shadow: 0 4px 8px theme.$shadow-color;
+          font-size: 12px;
+          background-color: theme.$font-color-white;
+          z-index: 100;
+
+          ul {
+            list-style-position: inside;
+
+            li {
+              margin-bottom: 0.5rem;
+              padding: 0.1875rem 0 0.1875rem 1.5rem;
+              text-indent: -1rem;
+            }
+          }
+        }
+      }
+    }
+
+    .content {
+      @include base.flexbox(column);
+      flex-grow: 1;
+      padding: 0.625rem;
+
+      #customListTab {
+        @include base.flexbox(column);
+
+        .tab-buttons {
+          @include base.flexbox(row, space-between);
+
+          .tab-button {
+            flex: 1;
+            width: calc(100% - 0.625rem);
+            border: 1px solid theme.$border-color;
+            border-bottom: none;
+            border-radius: 0.3125rem 0.3125rem 0 0;
+            color: theme.$font-color;
+            background-color: theme.$popup-color;
+
+            &.active {
+              color: theme.$font-color-white;
+              background-color: theme.$point-color;
+            }
+          }
+        }
+
+        .tab-content {
+          @include base.flexbox(column);
+          flex-grow: 1;
+
+          .custom-list {
+            @include base.flexbox(column);
+            min-height: 12.5rem;
+            max-height: 14rem;
+            padding: 0.3125rem 0;
+            border: 1px solid theme.$border-color;
+            overflow-y: auto;
+
+            &::-webkit-scrollbar {
+              width: 0.5rem;
+
+              &-track {
+                background: theme.$popup-color;
+              }
+
+              &-thumb {
+                border-radius: 0.25rem;
+                background-color: theme.$point-color;
+              }
+            }
+
+            .loading-spinner {
+              display: none;
+              width: 1.875rem;
+              height: 1.875rem;
+              margin: 1.25rem auto;
+              border: 4px solid theme.$dragging-bg-color;
+              border-left-color: theme.$point-color;
+              border-radius: 50%;
+              animation: spin 1s linear infinite;
+            }
+
+            @keyframes spin {
+              to {
+                transform: rotate(360deg);
+              }
+            }
+
+            li {
+              width: inherit;
+              min-height: 1.875rem;
+              padding-bottom: 0.3125rem;
+
+              &.active,
+              &:hover {
+                cursor: pointer;
+                color: theme.$font-color-white;
+                background-color: theme.$point-color;
+              }
+
+              .layer-list {
+                @include base.flexbox(row, space-between, center);
+                min-height: inherit;
+                padding: 0 0.3125rem;
+
+                .layer-footer {
+                  @include base.flexbox(row, space-between, center);
+                  cursor: pointer;
+
+                  .delete-icon {
+                    width: 1.125rem;
+                  }
+                }
+              }
+
+              .layer-url {
+                padding: 0 0.3125rem;
+              }
+            }
+
+            .empty-list {
+              text-align: center;
+              cursor: default;
+            }
+          }
+        }
+      }
+
+      #editControls {
+        @include base.flexbox(row, space-between);
+        margin-top: 0.625rem;
+
+        li {
+          button {
+            flex: 1;
+            margin: 0 0.3125rem;
+
+            &:disabled {
+              opacity: 0.6;
+              cursor: not-allowed;
+            }
+
+            span {
+              padding-left: 0.1875rem;
+              font-size: 0.75rem;
+            }
+          }
+        }
+      }
+
+      .toggle-switch {
+        @include base.flexbox(row, space-between, center);
+        gap: 10px;
+        padding: 0.625rem;
+        margin-top: 0.625rem;
+        border-top: 1px solid theme.$border-color;
+
+        #toggleHighlightLabel {
+          font-size: 0.8125rem;
+          color: theme.$font-color;
+          cursor: default;
+        }
+
+        input[type="checkbox"] {
+          display: none;
+
+          &:checked + .switch-label {
+            background-color: theme.$point-color;
+
+            .switch-inner {
+              transform: translateX(1.5rem);
+            }
+          }
+        }
+
+        .switch-label {
+          position: relative;
+          display: inline-block;
+          width: 3rem;
+          height: 1.5rem;
+          border-radius: 1rem;
+          background-color: theme.$border-color;
+          cursor: pointer;
+          @include base.transition(background-color);
+
+          .switch-inner {
+            position: absolute;
+            top: 0.25rem;
+            left: 0.25rem;
+            width: 1rem;
+            height: 1rem;
+            border-radius: 50%;
+            background-color: theme.$font-color-white;
+            @include base.transition(transform);
+          }
+        }
+      }
+    }
+  }
+
+  .popup {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: theme.$background-opacity;
+
+    .popup-content {
+      position: relative;
+      width: 80%;
+      margin: 15% auto;
+      padding: 1.25rem;
+      border-radius: 0.3125rem;
+      text-align: center;
+      background-color: theme.$font-color-white;
+
+      #cancelDelete,
+      #cancelSave {
+        position: absolute;
+        right: 10px;
+        top: 10px;
+        background-color: transparent;
+      }
+
+      p,
+      span {
+        display: block;
+        text-align: left;
+        font-size: 16px;
+        cursor: default;
+      }
+
+      input {
+        width: calc(100% - 5%);
+        margin-bottom: 0.625rem;
+        padding: 0.3125rem;
+
+        &:focus {
+          outline: none;
+        }
+      }
+
+      #confirmDelete,
+      #confirmSave {
+        width: 30%;
+        margin-top: 15px;
+
+        &:hover {
+          color: theme.$font-color-white;
+          background-color: theme.$point-color;
+        }
+      }
+    }
+  }
+}

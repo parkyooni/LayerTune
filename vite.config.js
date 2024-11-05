@@ -56,7 +56,7 @@ export default defineConfig({
           {
             matches: ["<all_urls>"],
             js: ["src/content/index.js"],
-            css: ["src/styles/style.css"],
+            css: ["src/styles/index.scss"],
           },
         ],
         permissions: ["scripting", "tabs", "identity", "storage", "commands"],
@@ -84,32 +84,31 @@ export default defineConfig({
         popup: path.resolve(__dirname, "src/popup/index.html"),
         background: path.resolve(__dirname, "src/background/index.js"),
         content: path.resolve(__dirname, "src/content/index.js"),
-        style: path.resolve(__dirname, "src/styles/style.css"),
+        // style: path.resolve(__dirname, "src/styles/index.scss"),
       },
       output: {
         entryFileNames: (chunkInfo) => {
-          if (chunkInfo.name === "background") {
-            return "background.js";
-          }
-          if (chunkInfo.name === "content") {
-            return "content.js";
-          }
-          return "[name].js";
+          const mapping = {
+            main: "popup/index.js",
+            background: "background/index.js",
+            content: "content/index.js",
+          };
+          return mapping[chunkInfo.name] || "[name]/index.js";
         },
-        chunkFileNames: "[name].js",
         assetFileNames: (assetInfo) => {
-          const info = assetInfo.name.split(".");
-          const extType = info[info.length - 1];
-
-          if (extType === "css") {
-            return `styles/style.css`;
+          if (assetInfo.name.endsWith(".html")) {
+            return "index.html";
           }
-
+          if (
+            assetInfo.name.endsWith(".css") ||
+            assetInfo.name.endsWith(".scss")
+          ) {
+            return "styles/index.css";
+          }
           if (/\.(png|jpe?g|gif|svg)$/.test(assetInfo.name)) {
-            return `icons/[name][extname]`;
+            return "icons/[name][extname]";
           }
-
-          return `[name][extname]`;
+          return "[name][extname]";
         },
       },
     },
@@ -118,5 +117,10 @@ export default defineConfig({
   publicDir: "public",
   css: {
     modules: false,
+    preprocessorOptions: {
+      scss: {
+        // additionalData: `@import "@/styles/_variables.css";`,
+      },
+    },
   },
 });

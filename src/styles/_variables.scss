@@ -1,0 +1,23 @@
+$popup-color: #efefef;
+$border-layer-color: #62a2ff;
+$font-color: #333333;
+$font-color-white: #ffffff;
+$border-color: #dddddd;
+$point-color: #a78f8f;
+$active-ba-color: #62ffc3;
+$disabled-color: #a0a0a0;
+
+$background-opacity: rgba(0, 0, 0, 0.5);
+$dragging-bg-color: rgba(0, 123, 255, 0.1);
+$shadow-color: rgba(0, 0, 0, 0.1);
+
+$transition-duration: 0.3s;
+$transition-timing: ease;
+
+:root {
+  --border-layer-color: #62a2ff;
+  --font-color-white: #ffffff;
+  --border-color: #dddddd;
+  --active-ba-color: #62ffc3;
+  --dragging-bg-color: rgba(0, 123, 255, 0.1);
+}
