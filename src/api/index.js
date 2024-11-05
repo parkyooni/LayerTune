@@ -1,5 +1,3 @@
-// const API_BASE_URL =
-//   "http://layertune-env.eba-ymp3zghv.us-east-2.elasticbeanstalk.com/api";
 const API_BASE_URL = "http://localhost:5000/api";
 
 const ENDPOINTS = {
