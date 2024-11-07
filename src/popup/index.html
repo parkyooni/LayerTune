@@ -67,7 +67,7 @@
           </div>
         </div>
 
-        <ul id="editControls">
+        <!-- <ul id="editControls">
           <li>
             <button id="undoButton" title="Ctrl+Shift+Z/⌘+⇧+Z">
               되돌리기<span>(Ctrl+Shift+Z/⌘+⇧+Z)</span>
@@ -77,6 +77,14 @@
             <button id="saveButton" title="Ctrl+Shift+S/⌘+⇧+S">
               저장<span>(Ctrl+Shift+S/⌘+⇧+S)</span>
             </button>
+          </li>
+        </ul> -->
+        <ul id="editControls">
+          <li>
+            <button id="undoButton">되돌리기</button>
+          </li>
+          <li>
+            <button id="saveButton">저장</button>
           </li>
         </ul>
 
@@ -98,6 +106,7 @@
         </button>
         <p>커스텀 저장</p>
         <input type="text" id="customName" placeholder="커스텀 이름 입력" />
+        <span class="error-message"></span>
         <button id="confirmSave">저장</button>
       </div>
     </div>

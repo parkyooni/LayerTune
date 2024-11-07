@@ -19,8 +19,8 @@ export const applyChanges = (element, change) => {
     if (targetIndex >= 0 && targetIndex <= targetSiblings.length) {
       const clonedElement = sourceElement.cloneNode(true);
 
-      if (change.finalElementId) {
-        clonedElement.dataset.id = change.finalElementId;
+      if (change.updatedElementId) {
+        clonedElement.dataset.id = change.updatedElementId;
       }
 
       Object.entries(change.updatedAttributes).forEach(([attr, value]) => {

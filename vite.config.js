@@ -117,10 +117,5 @@ export default defineConfig({
   publicDir: "public",
   css: {
     modules: false,
-    preprocessorOptions: {
-      scss: {
-        // additionalData: `@import "@/styles/_variables.css";`,
-      },
-    },
   },
 });

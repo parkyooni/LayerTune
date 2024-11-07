@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const ENDPOINTS = {
   LAYERS: {
@@ -69,12 +69,9 @@ export const deleteLayer = async (layerId) => {
 
 export const fetchUserInfo = async (token) => {
   try {
-    const response = await fetch(
-      "https://www.googleapis.com/oauth2/v1/userinfo?alt=json",
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+    const response = await fetch(import.meta.env.VITE_GOOGLE_OAUTH2, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     if (!response.ok) {
       throw new Error("Failed to fetch user info");
     }

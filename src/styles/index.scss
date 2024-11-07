@@ -219,17 +219,38 @@ body.extension-popup {
       }
 
       #editControls {
+        position: relative;
         @include base.flexbox(row, space-between);
         margin-top: 0.625rem;
 
         li {
+          &:nth-child(2) {
+            &::before {
+              content: "";
+              position: absolute;
+              top: 8px;
+              left: 50%;
+              width: 1px;
+              height: 20px;
+              background-color: theme.$border-color;
+            }
+          }
+
           button {
             flex: 1;
-            margin: 0 0.3125rem;
+            width: 100px;
+            border-radius: 0.3125rem;
+            border: 1px solid theme.$point-color;
+            color: theme.$point-color;
+            font-weight: bold;
 
             &:disabled {
               opacity: 0.6;
+              border-color: theme.$border-color;
+              background-color: theme.$border-color;
               cursor: not-allowed;
+              color: theme.$font-color-white;
+              font-weight: normal;
             }
 
             span {
@@ -326,12 +347,20 @@ body.extension-popup {
 
       input {
         width: calc(100% - 5%);
-        margin-bottom: 0.625rem;
+        margin-bottom: 0.3125rem;
         padding: 0.3125rem;
 
         &:focus {
           outline: none;
         }
+      }
+
+      .error-message {
+        margin-bottom: 0.625rem;
+        font-size: 12px;
+        font-weight: bold;
+        color: theme.$point-color;
+        cursor: default;
       }
 
       #confirmDelete,
