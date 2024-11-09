@@ -1,9 +1,9 @@
-export { applyChanges } from "./applyChanges";
+export { applySavedDOMChanges } from "./applyChanges";
 export { assignUniqueIdsToDOM } from "./assignUniqueIdsToDOM";
 export { clearSelectedLayerStyles } from "./clearSelectedLayerStyles";
 export { formatDate } from "./formatDate";
 export { getElementByXPath } from "./getElementByXPath";
-export { getXPath } from "./getXPath";
+export { getCompleteXPath } from "./getXPath";
 export { isExcludedElement } from "./excludedElement";
 export { debounce } from "./debounce";
 

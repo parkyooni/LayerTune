@@ -9,18 +9,19 @@ import {
   SELECTORS,
 } from "../config/constant";
 import {
-  applyChanges,
+  applySavedDOMChanges,
   assignUniqueIdsToDOM,
   clearSelectedLayerStyles,
-  getElementByXPath,
-  getXPath,
+  getCompleteXPath,
   isExcludedElement,
   debounce,
 } from "../utils";
 
 const body = document.body;
 const elementChangeMap = new Map();
+const originalPathMap = new Map();
 const versionHistory = [];
+let initialDOMState;
 
 const handleKey = (e, isKeyDown) => {
   if (e.key === COMMAND.KEY_SHIFT) {
@@ -37,56 +38,133 @@ document.addEventListener("keyup", (e) => handleKey(e, false));
 const trackElementChange = (element, changeType, swapResult = null) => {
   const elementId =
     element.getAttribute("data-id") || element.dataset.originalId;
-  let updatedElementId = element.dataset.id;
 
-  const change = {
-    elementId,
-    updatedElementId,
-    elementXPath: getXPath(element),
-    updatedAttributes: {},
-    updatedStyles: {},
-    changeType,
-  };
-
-  Array.from(element.attributes).forEach(({ name, value }) => {
-    if (!STYLE.EXTENSION_ATTRIBUTES.includes(name)) {
-      change.updatedAttributes[name] = value;
-    }
-  });
-
-  Array.from(element.style).forEach((style) => {
-    if (!STYLE.EXTENSION_STYLES.includes(style)) {
-      change.updatedStyles[style] = element.style[style];
-    }
-  });
+  if (changeType === EVENTS.SELECT || changeType === EVENTS.MULTI_SELECT) {
+    const fullPath = getCompleteXPath(element);
+    originalPathMap.set(elementId, fullPath);
+    return;
+  }
 
   if (changeType === EVENTS.DRAGEND && swapResult) {
+    elementChangeMap.clear();
+
     const finalElementId =
       swapResult.originalFirst === elementId
         ? swapResult.newFirst
         : swapResult.newSecond;
-
     const updatedElement = document.querySelector(
       `[data-id="${finalElementId}"]`
     );
+    if (!updatedElement) return;
 
-    if (updatedElement) {
-      change.elementXPath = getXPath(updatedElement);
-      change.updatedAttributes = {};
+    const originalPath =
+      originalPathMap.get(elementId) || getCompleteXPath(element);
+    const change = {
+      elementId,
+      updatedElementId: finalElementId,
+      originXPath: originalPath,
+      elementXPath: getCompleteXPath(updatedElement),
+      updatedAttributes: {},
+      updatedStyles: {},
+      changeType,
+    };
 
-      Array.from(updatedElement.attributes).forEach(({ name, value }) => {
-        if (!STYLE.EXTENSION_ATTRIBUTES.includes(name)) {
-          change.updatedAttributes[name] = value;
-        }
-      });
+    Array.from(element.attributes).forEach(({ name, value }) => {
+      if (!STYLE.EXTENSION_ATTRIBUTES.includes(name)) {
+        change.updatedAttributes[name] = value;
+      }
+    });
 
-      change.updatedElementId = finalElementId;
-    }
+    Array.from(element.style).forEach((style) => {
+      if (!STYLE.EXTENSION_STYLES.includes(style)) {
+        change.updatedStyles[style] = element.style[style];
+      }
+    });
 
     elementChangeMap.set(elementId, change);
+    versionHistory.push({
+      timestamp: new Date().toISOString(),
+      changes: [change],
+    });
+  }
+};
+
+const resetDOMForSelection = () => {
+  if (initialDOMState) {
+    body.innerHTML = initialDOMState;
+    assignUniqueIdsToDOM(body);
+    state.domChanged = false;
+    originalPathMap.clear();
+  }
+};
+
+const restoreToInitialDOMState = () => {
+  if (versionHistory.length === 0) {
+    console.warn("되돌릴 변경사항이 없습니다.");
+    return;
   }
 
-  return change;
+  const lastChange = versionHistory.pop();
+  const modifiedElements = new Set();
+
+  lastChange.changes.forEach((change) => {
+    try {
+      const movedElement = document.querySelector(
+        `[data-id="${change.updatedElementId}"]`
+      );
+      const originalLocation = document.evaluate(
+        change.originXPath,
+        document,
+        null,
+        XPathResult.FIRST_ORDERED_NODE_TYPE,
+        null
+      ).singleNodeValue;
+
+      if (!movedElement || !originalLocation?.parentNode) {
+        return console.warn(
+          `요소 또는 원래 위치를 찾을 수 없습니다: ${change.updatedElementId}`
+        );
+      }
+
+      Object.entries(change.updatedAttributes || {}).forEach(([name, value]) =>
+        value
+          ? movedElement.setAttribute(name, value)
+          : movedElement.removeAttribute(name)
+      );
+
+      Object.entries(change.updatedStyles || {}).forEach(
+        ([style, value]) => (movedElement.style[style] = value || "")
+      );
+
+      originalLocation.parentNode.insertBefore(movedElement, originalLocation);
+      movedElement.setAttribute("data-id", change.elementId);
+
+      modifiedElements.add(movedElement).add(originalLocation);
+    } catch (error) {
+      console.error("요소를 복원하지 못했습니다:", error);
+    }
+  });
+
+  updateModifiedElementsLayout(modifiedElements);
+
+  state.domChanged = versionHistory.length > 0;
+  interactionState.draggedElements = [];
+  state.selectedLayers.clear();
+};
+
+const updateModifiedElementsLayout = (modifiedElements) => {
+  modifiedElements.forEach((element) => {
+    if (!element.hasAttribute("data-id")) {
+      element.setAttribute("data-id", generateUniqueId());
+    }
+
+    let current = element;
+    while (current && !modifiedElements.has(current)) {
+      current.style.display = "none";
+      current.style.display = "";
+      current = current.parentElement;
+    }
+  });
 };
 
 const activateLayerSelection = () => {
@@ -289,6 +367,10 @@ const handleDrop = (event) => {
       }
 
       state.domChanged = true;
+      chrome.runtime.sendMessage({
+        action: MESSAGE_ACTION.ACTION_DOM_CHANGED_NOTIFICATION,
+        data: { domChanged: true },
+      });
       chrome.runtime.sendMessage({ action: MESSAGE_ACTION.ACTION_DOM_CHANGED });
     }
   } catch (error) {
@@ -345,51 +427,43 @@ const swapElements = (firstElement, secondElement) => {
   };
 };
 
+const saveInitialDOMState = () => {
+  initialDOMState = body.innerHTML;
+};
+
+saveInitialDOMState();
+monitorDOMChanges();
+assignUniqueIdsToDOM(body);
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  switch (request.action) {
+  const { action } = request;
+
+  switch (action) {
     case MESSAGE_ACTION.ACTION_GET_DOM_CHANGED_STATUS:
       sendResponse({ domChanged: state.domChanged });
-      return true;
+      break;
+
+    case MESSAGE_ACTION.ACTION_UNDO:
+      const status = versionHistory.length > 0 ? "reverted" : "no_changes";
+      if (status === "reverted") restoreToInitialDOMState();
+      sendResponse({ status });
+      break;
 
     case MESSAGE_ACTION.ACTION_SAVE_DOM_CHANGES:
-      const versionedChanges = {
-        timestamp: new Date().toISOString(),
-        changes: Array.from(elementChangeMap.values()),
-      };
-
-      versionHistory.push(versionedChanges);
+      const changes = Array.from(elementChangeMap.values());
       sendResponse({
         status: "success",
-        data: { saveDOMChanges: versionedChanges.changes },
+        data: { saveDOMChanges: changes },
       });
-      return true;
+      break;
+
     case MESSAGE_ACTION.ACTION_APPLY_SAVED_DOM:
-      const { elementChanges } = request;
-      let appliedCount = 0;
-
-      elementChanges.forEach((change) => {
-        const element =
-          document.querySelector(`[data-id="${change.elementId}"]`) ||
-          document.querySelector(`[data-id="${change.finalElementId}"]`) ||
-          getElementByXPath(change.elementXPath);
-
-        if (element) {
-          applyChanges(element, change);
-          appliedCount++;
-        }
-      });
-
-      assignUniqueIdsToDOM(body);
-      sendResponse({
-        status: "success",
-        message: `Applied ${appliedCount} of ${elementChanges.length} changes`,
-      });
-      return true;
+      applySavedDOMChanges(request.elementChanges, sendResponse);
+      break;
 
     default:
       return false;
   }
-});
 
-assignUniqueIdsToDOM(body);
-monitorDOMChanges();
+  return true;
+});

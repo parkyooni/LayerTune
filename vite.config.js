@@ -65,7 +65,7 @@ export default defineConfig({
           "https://specific-site.com/*",
           "https://accounts.google.com/",
           "https://www.googleapis.com/",
-          "http://localhost:5000/",
+          "http://localhost:8080/",
         ],
       },
     }),
@@ -84,7 +84,6 @@ export default defineConfig({
         popup: path.resolve(__dirname, "src/popup/index.html"),
         background: path.resolve(__dirname, "src/background/index.js"),
         content: path.resolve(__dirname, "src/content/index.js"),
-        // style: path.resolve(__dirname, "src/styles/index.scss"),
       },
       output: {
         entryFileNames: (chunkInfo) => {

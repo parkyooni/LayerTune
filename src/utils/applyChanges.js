@@ -1,4 +1,6 @@
-export const applyChanges = (element, change) => {
+import { getElementByXPath } from "./index";
+
+const applyChanges = (element, change) => {
   if (!element) return;
 
   const sourceElement = element;
@@ -51,4 +53,31 @@ export const applyChanges = (element, change) => {
       }, 1000);
     }
   }
+};
+
+export const applySavedDOMChanges = (
+  elementChanges,
+  resetDOMForSelection,
+  sendResponse
+) => {
+  resetDOMForSelection();
+  let appliedCount = 0;
+
+  elementChanges.forEach((change) => {
+    const element =
+      document.querySelector(`[data-id="${change.elementId}"]`) ||
+      document.querySelector(`[data-id="${change.updatedElementId}"]`) ||
+      getElementByXPath(change.elementXPath);
+
+    if (element) {
+      applyChanges(element, change);
+      appliedCount++;
+    }
+  });
+
+  assignUniqueIdsToDOM(document.body);
+  sendResponse({
+    status: "success",
+    message: `Applied ${appliedCount} of ${elementChanges.length} changes`,
+  });
 };

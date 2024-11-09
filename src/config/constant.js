@@ -68,7 +68,10 @@ export const COMMAND = {
 };
 
 export const EVENTS = {
+  SELECT: "select",
+  MULTI_SELECT: "multiSelect",
   MOUSEDOWN: "mousedown",
+  MOVE: "move",
   DROP: "drop",
   DRAGOVER: "dragover",
   DRAGGABLE: "draggable",
@@ -90,8 +93,11 @@ export const MESSAGE_ACTION = {
   ACTION_GET_CURRENT_TAB_URL: "getCurrentTabUrl",
   ACTION_DOM_CHANGED: "domChanged",
   ACTION_GET_DOM_CHANGED_STATUS: "getDomChangedStatus",
+  ACTION_UNDO: "undo",
   ACTION_SAVE_DOM_CHANGES: "saveDOMChanges",
   ACTION_APPLY_SAVED_DOM: "applySavedDOM",
   ACTION_UPDATE_LAYER_HIGHLIGHT: "updateLayerHighlight",
   ACTION_TOGGLE_LAYER_HIGHLIGHT: "toggleLayerHighlight",
+  ACTION_UPDATE_UNDO_BUTTON: "updateUndoButton",
+  ACTION_DOM_CHANGED_NOTIFICATION: "domChangedNotification",
 };

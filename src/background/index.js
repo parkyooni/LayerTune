@@ -67,6 +67,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       chrome.runtime.sendMessage(request.data, sendResponse);
       break;
 
+    case MESSAGE_ACTION.ACTION_UNDO:
+      chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+        if (tab?.id) {
+          chrome.tabs.sendMessage(
+            tab.id,
+            { action: MESSAGE_ACTION.ACTION_UNDO },
+            sendResponse
+          );
+        }
+      });
+      break;
+
+    case MESSAGE_ACTION.ACTION_DOM_CHANGED_NOTIFICATION:
+      chrome.runtime.sendMessage({
+        action: MESSAGE_ACTION.ACTION_UPDATE_UNDO_BUTTON,
+        data: request.data,
+      });
+      break;
+
     default:
       break;
   }

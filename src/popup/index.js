@@ -34,6 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
     appState.loggedIn = isLoggedIn;
     state.domChanged = false;
     updateSaveButtonState();
+    updateUndoButtonState();
 
     userInfo.style.display = isLoggedIn ? STYLE.STYLE_BLOCK : STYLE.STYLE_NONE;
     toggleLogin.style.display = isLoggedIn
@@ -43,6 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (isLoggedIn) {
       appState.userId = userId;
       userNameSpan.textContent = userName;
+
       loadSavedLayers();
     } else {
       showLoginMessage();
@@ -67,6 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (domChanged) {
               state.domChanged = domChanged;
               updateSaveButtonState();
+              updateUndoButtonState();
             }
           }
         );
@@ -105,15 +108,22 @@ document.addEventListener("DOMContentLoaded", () => {
         saveToAPI(request.data);
         sendResponse({ status: "DOM changes received in popup" });
         break;
+
+      case MESSAGE_ACTION.ACTION_UPDATE_UNDO_BUTTON:
+        if (request.data.domChanged !== undefined) {
+          state.domChanged = request.data.domChanged;
+          updateUndoButtonState();
+        }
+        break;
     }
   });
 
   const updateSaveButtonState = () => {
-    console.log(
-      "appState.loggedIn && state.domChanged",
-      appState.loggedIn && state.domChanged
-    );
     saveButton.disabled = !(appState.loggedIn && state.domChanged);
+  };
+
+  const updateUndoButtonState = () => {
+    undoButton.disabled = !state.domChanged;
   };
 
   const clearActiveClassFromList = () => {
@@ -170,6 +180,7 @@ document.addEventListener("DOMContentLoaded", () => {
       userInfo.style.display = STYLE.STYLE_NONE;
       toggleLogin.style.display = STYLE.STYLE_BLOCK;
       updateSaveButtonState();
+      updateUndoButtonState();
       showLoginMessage();
     });
   });
@@ -200,11 +211,29 @@ document.addEventListener("DOMContentLoaded", () => {
     savePopup.style.display = STYLE.STYLE_BLOCK;
   });
 
+  customNameInput.addEventListener("input", () => {
+    const errorMessageSpan = document.querySelector(".error-message");
+    errorMessageSpan.innerHTML = "";
+  });
+
   confirmSaveButton.addEventListener("click", async () => {
     const customName = customNameInput.value.trim();
+    const errorMessageSpan = document.querySelector(".error-message");
+    errorMessageSpan.innerHTML = "";
 
     if (!customName) {
-      return alert(MESSAGES.NAME_REQUIRED_ALERT);
+      errorMessageSpan.innerHTML = "빈 이름은 허용되지 않습니다.";
+      return;
+    }
+
+    if (customName.length < 3 || customName.length > 50) {
+      errorMessageSpan.innerHTML = "이름은 3자 이상, 50자 이하로 입력해주세요.";
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9ㄱ-ㅎ가-힣\s]+$/.test(customName)) {
+      errorMessageSpan.innerHTML = "이름에는 특수 문자를 사용할 수 없습니다.";
+      return;
     }
 
     try {
@@ -241,7 +270,7 @@ document.addEventListener("DOMContentLoaded", () => {
         },
         {},
         async (response) => {
-          if (response?.status === "success" && response.data?.saveDOMChanges) {
+          if (response.status === "success" && response.data.saveDOMChanges) {
             try {
               await saveToAPI({
                 elementChanges: response.data.saveDOMChanges,
@@ -249,6 +278,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 userId: appState.userId,
                 url,
               });
+
+              updateSaveButtonState();
+              updateUndoButtonState();
             } catch (error) {
               console.error(MESSAGES.SAVE_FAILED_ALERT, error);
               alert(MESSAGES.SAVE_FAILED_ALERT);
@@ -292,12 +324,22 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   undoButton.addEventListener("click", () => {
-    chrome.tabs.query(
-      { active: true, currentWindow: true },
-      ([{ id: tabId }]) => {
-        chrome.tabs.sendMessage(tabId, { action: "undo" });
-      }
-    );
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      chrome.tabs.sendMessage(
+        tabs[0].id,
+        { action: MESSAGE_ACTION.ACTION_UNDO },
+        (response) => {
+          if (response?.status === "reverted") {
+            console.log("Undo successful");
+            updateUndoButtonState();
+          } else if (response?.status === "no_changes") {
+            console.warn("No changes to undo."); // 되돌릴 변경이 없음을 알림
+          } else {
+            console.error("Unexpected response:", response); // 예상치 못한 응답 형식
+          }
+        }
+      );
+    });
   });
 
   tabButtons.forEach((button) => {
