@@ -5,7 +5,8 @@ export const assignUniqueIdsToDOM = (node, depth = "0") => {
   ) {
     node.dataset.id = `${depth}`;
   }
-  Array.from(node.childNodes).forEach((child, index) =>
+
+  Array.from(node.children).forEach((child, index) =>
     assignUniqueIdsToDOM(child, `${depth}.${index}`)
   );
 };

@@ -1,3 +1,5 @@
+import { getElementByXPath } from "./index";
+
 export const getCompleteXPath = (element) => {
   if (!element?.nodeType) return null;
 
@@ -37,7 +39,8 @@ const getElementIndex = (element) => {
 export const validateXPath = (xpath) => {
   try {
     return Boolean(getElementByXPath(xpath));
-  } catch {
+  } catch (error) {
+    console.error(`Failed to validate XPath: ${xpath}`, error);
     return false;
   }
 };

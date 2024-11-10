@@ -26,3 +26,6 @@ npm-debug.log*
 # Browser extensions specific
 *.pem
 *.crx
+
+# Test code
+/coverage

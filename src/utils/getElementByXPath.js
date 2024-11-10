@@ -1,5 +1,10 @@
 export const getElementByXPath = (xpath) => {
   try {
+    if (xpath.startsWith('//*[@id="')) {
+      const id = xpath.match(/@id="([^"]+)"/)[1];
+      return document.getElementById(id);
+    }
+
     return (
       document.evaluate(
         xpath,

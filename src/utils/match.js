@@ -1,15 +1,15 @@
-const matchTagName = (element, exclusion) => {
-  return (
-    exclusion.tagName && element.tagName.toLowerCase() === exclusion.tagName
-  );
+export const matchTagName = (element, exclusion) => {
+  return exclusion.tagName
+    ? element.tagName.toLowerCase() === exclusion.tagName
+    : false;
 };
 
-const matchId = (element, exclusion) => {
-  return exclusion.id && element.id === exclusion.id;
+export const matchId = (element, exclusion) => {
+  return exclusion.id ? element.id === exclusion.id : false;
 };
 
-const matchClassName = (element, exclusion) => {
-  return exclusion.className && element.classList.contains(exclusion.className);
+export const matchClassName = (element, exclusion) => {
+  return exclusion.className
+    ? element.classList.contains(exclusion.className)
+    : false;
 };
-
-export const match = { matchTagName, matchId, matchClassName };

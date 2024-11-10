@@ -1,4 +1,4 @@
-import { getElementByXPath } from "./index";
+import { getElementByXPath, assignUniqueIdsToDOM } from "./index";
 
 const applyChanges = (element, change) => {
   if (!element) return;
@@ -78,6 +78,6 @@ export const applySavedDOMChanges = (
   assignUniqueIdsToDOM(document.body);
   sendResponse({
     status: "success",
-    message: `Applied ${appliedCount} of ${elementChanges.length} changes`,
+    message: `총 ${appliedCount}개 중 ${elementChanges.length}개의 변경 사항이 적용되었습니다`,
   });
 };

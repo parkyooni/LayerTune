@@ -333,9 +333,9 @@ document.addEventListener("DOMContentLoaded", () => {
             console.log("Undo successful");
             updateUndoButtonState();
           } else if (response?.status === "no_changes") {
-            console.warn("No changes to undo."); // 되돌릴 변경이 없음을 알림
+            console.warn("No changes to undo.");
           } else {
-            console.error("Unexpected response:", response); // 예상치 못한 응답 형식
+            console.error("Unexpected response:", response);
           }
         }
       );

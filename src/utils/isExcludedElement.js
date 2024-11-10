@@ -1,5 +1,5 @@
 import { EXCLUDED_ELEMENTS } from "../config/constant";
-import { match } from "./match";
+import * as match from "./match";
 
 export const isExcludedElement = (element) => {
   return EXCLUDED_ELEMENTS.some(
