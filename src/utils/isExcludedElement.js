@@ -1,4 +1,4 @@
-import { EXCLUDED_ELEMENTS } from "../config/constant";
+import { EXCLUDED_ELEMENTS } from "@/config/constant";
 import * as match from "./match";
 
 export const isExcludedElement = (element) => {

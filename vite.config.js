@@ -11,9 +11,9 @@ export default defineConfig({
       manifest: {
         manifest_version: 3,
         name: "LayerTune",
-        version: "1.0",
+        version: "1.2",
         description:
-          "Highlight and switch semantic and div elements on web pages",
+          "웹사이트 전체에서 사용자가 원하는 위치로 요소들을 이동할 수 있도록 돕는 Chrome Extension입니다.",
         icons: {
           16: "icons/icon16.png",
           48: "icons/icon48.png",
@@ -65,7 +65,6 @@ export default defineConfig({
           "https://specific-site.com/*",
           "https://accounts.google.com/",
           "https://www.googleapis.com/",
-          "http://localhost:8080/",
         ],
       },
     }),
@@ -73,7 +72,6 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "@public": path.resolve(__dirname, "./public"),
     },
   },
   build: {

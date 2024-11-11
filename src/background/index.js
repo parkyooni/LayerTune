@@ -1,4 +1,4 @@
-import { MESSAGE_ACTION } from "../config/constant";
+import { MESSAGE_ACTION } from "@/config/constant";
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({ layerHighlightState: {} });

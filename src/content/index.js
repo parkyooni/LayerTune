@@ -1,5 +1,5 @@
-import "../styles/index.scss";
-import { state, interactionState } from "../common/state";
+import "@/styles/index.scss";
+import { state, interactionState } from "@/common/state";
 import {
   STYLE,
   COMMAND,
@@ -7,7 +7,7 @@ import {
   MESSAGE_ACTION,
   CONFIG,
   SELECTORS,
-} from "../config/constant";
+} from "@/config/constant";
 import {
   applySavedDOMChanges,
   assignUniqueIdsToDOM,
@@ -15,7 +15,7 @@ import {
   getCompleteXPath,
   isExcludedElement,
   debounce,
-} from "../utils";
+} from "@/utils";
 
 const body = document.body;
 const elementChangeMap = new Map();

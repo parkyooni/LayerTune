@@ -1,4 +1,4 @@
-import { DOM_IDS, CLASS_NAMES } from "../config/constant";
+import { DOM_IDS, CLASS_NAMES } from "@/config/constant";
 
 const getElementById = (id) => document.getElementById(id);
 const getElementsByClass = (className) =>

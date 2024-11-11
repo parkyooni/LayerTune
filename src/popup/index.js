@@ -1,14 +1,14 @@
-import "../styles/index.scss";
-import { api } from "../api";
-import { state, appState } from "../common/state";
+import "@/styles/index.scss";
+import { api } from "@/api";
+import { state, appState } from "@/common/state";
 import {
   STYLE,
   DOM_IDS,
   CLASS_NAMES,
   MESSAGE_ACTION,
   MESSAGES,
-} from "../config/constant";
-import { formatDate, elements } from "../utils";
+} from "@/config/constant";
+import { formatDate, elements } from "@/utils";
 
 document.addEventListener("DOMContentLoaded", () => {
   const toggleHighlightSwitch = elements.TOGGLE_HIGHLIGHT_SWITCH;
@@ -381,9 +381,15 @@ document.addEventListener("DOMContentLoaded", () => {
         li.classList.add(CLASS_NAMES.ACTIVE);
 
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          chrome.tabs.sendMessage(tabs[0].id, {
-            action: MESSAGE_ACTION.ACTION_APPLY_SAVED_DOM,
-            elementChanges: layer.elementChanges,
+          const tabId = tabs[0].id;
+
+          chrome.tabs.reload(tabId, () => {
+            setTimeout(() => {
+              chrome.tabs.sendMessage(tabId, {
+                action: MESSAGE_ACTION.ACTION_APPLY_SAVED_DOM,
+                elementChanges: layer.elementChanges,
+              });
+            }, 500);
           });
         });
       });

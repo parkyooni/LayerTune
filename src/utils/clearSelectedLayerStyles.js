@@ -1,4 +1,4 @@
-import { state } from "../common/state";
+import { state } from "@/common/state";
 
 export const clearSelectedLayerStyles = () => {
   state.selectedLayers.forEach((layer) => {

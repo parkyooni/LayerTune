@@ -206,7 +206,12 @@ body.extension-popup {
               }
 
               .layer-url {
+                display: inline-block;
+                width: 290px;
                 padding: 0 0.3125rem;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                overflow: hidden;
               }
             }
 
