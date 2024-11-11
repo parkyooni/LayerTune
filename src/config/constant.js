@@ -36,6 +36,7 @@ export const MESSAGES = {
   LOGIN_REQUIRED: "로그인 해주세요.",
   NO_CONTENT: "저장된 콘텐츠가 없습니다.",
   LOAD_FAILED: "데이터를 불러오는데 실패했습니다.",
+  FAILED_COPY_ALERT: "URL 복사에 실패했습니다. 다시 시도해주세요.",
   DUPLICATE_WARNING: "같은 이름의 저장된 레이어가 있습니다. 덮어쓰시겠습니까?",
   LOGIN_REQUIRED_ALERT: "로그인이 필요합니다.",
   NAME_REQUIRED_ALERT: "이름을 입력해주세요.",
@@ -45,8 +46,8 @@ export const MESSAGES = {
   DOM_DATA_FAILED_ALERT: "DOM 데이터 전송 중 오류가 발생했습니다.",
   FIAILED_COPY_ALERT: "URL 복사에 실패했습니다.",
   URL_COPIED_ALERT: (url) => `URL이 복사되었습니다: ${url}`,
-  MOVE_ELEMENT: "요소 이동 중 오류가 발생했습니다",
-  DROP_HANDLER: "드롭 핸들러에서 오류가 발생했습니다",
+  MOVE_ELEMENT: "요소 이동 중 오류가 발생했습니다.",
+  DROP_HANDLER: "드롭 핸들러에서 오류가 발생했습니다.",
 };
 
 export const STYLE = {

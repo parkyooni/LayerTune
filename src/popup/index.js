@@ -113,6 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (request.data.domChanged !== undefined) {
           state.domChanged = request.data.domChanged;
           updateUndoButtonState();
+          updateSaveButtonState();
         }
         break;
     }
@@ -330,12 +331,7 @@ document.addEventListener("DOMContentLoaded", () => {
         { action: MESSAGE_ACTION.ACTION_UNDO },
         (response) => {
           if (response?.status === "reverted") {
-            console.log("Undo successful");
             updateUndoButtonState();
-          } else if (response?.status === "no_changes") {
-            console.warn("No changes to undo.");
-          } else {
-            console.error("Unexpected response:", response);
           }
         }
       );

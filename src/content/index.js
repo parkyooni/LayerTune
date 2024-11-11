@@ -150,6 +150,11 @@ const restoreToInitialDOMState = () => {
   state.domChanged = versionHistory.length > 0;
   interactionState.draggedElements = [];
   state.selectedLayers.clear();
+
+  chrome.runtime.sendMessage({
+    action: MESSAGE_ACTION.ACTION_UPDATE_UNDO_BUTTON,
+    data: { domChanged: state.domChanged },
+  });
 };
 
 const updateModifiedElementsLayout = (modifiedElements) => {

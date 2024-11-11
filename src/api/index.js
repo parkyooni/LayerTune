@@ -2,11 +2,11 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const ENDPOINTS = {
   LAYERS: {
-    SAVE: "/layers/save",
-    CHECK_DUPLICATE: "/layers/check",
-    GET_BY_URL: "/layers/url",
-    GET_ALL: "/layers/google",
-    DELETE: "/layers/delete",
+    SAVE: "/save",
+    CHECK_DUPLICATE: "/check",
+    GET_BY_URL: "/url",
+    GET_ALL: "/google",
+    DELETE: "/delete",
   },
 };
 
