@@ -12,7 +12,10 @@ const ENDPOINTS = {
 
 const fetchAPI = async (endpoint, options = {}, token = null) => {
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const baseURL = API_BASE_URL.replace(/\/$/, "");
+    const finalURL = `${baseURL}${endpoint}`;
+
+    const response = await fetch(finalURL, {
       ...options,
       headers: {
         "Content-Type": "application/json",
@@ -21,10 +24,7 @@ const fetchAPI = async (endpoint, options = {}, token = null) => {
       },
     });
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
     return await response.json();
   } catch (error) {
     console.error(`API request failed: ${error.message}`);

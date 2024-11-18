@@ -6,12 +6,17 @@ import dotenv from "dotenv";
 dotenv.config();
 
 export default defineConfig({
+  define: {
+    "process.env.VITE_API_BASE_URL": JSON.stringify(
+      process.env.VITE_API_BASE_URL
+    ),
+  },
   plugins: [
     webExtension({
       manifest: {
         manifest_version: 3,
         name: "LayerTune",
-        version: "1.2",
+        version: "1.3",
         description:
           "웹사이트 전체에서 사용자가 원하는 위치로 요소들을 이동할 수 있도록 돕는 Chrome Extension입니다.",
         icons: {
@@ -25,22 +30,6 @@ export default defineConfig({
         background: {
           service_worker: "src/background/index.js",
           type: "module",
-        },
-        commands: {
-          undo: {
-            suggested_key: {
-              default: "Ctrl+Shift+Z",
-              mac: "Command+Shift+Z",
-            },
-            description: "Undo last action",
-          },
-          save: {
-            suggested_key: {
-              default: "Ctrl+Shift+S",
-              mac: "Command+Shift+S",
-            },
-            description: "Save changes",
-          },
         },
         oauth2: {
           client_id: process.env.VITE_GOOGLE_CLIENT_ID,
