@@ -221,6 +221,13 @@ chrome.storage.local.get(["layerHighlightState"], (result) => {
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local" || !changes.layerHighlightState) return;
 
+  const isStateUnchanged =
+    changes.layerHighlightState.oldValue &&
+    JSON.stringify(changes.layerHighlightState.oldValue) ===
+      JSON.stringify(changes.layerHighlightState.newValue);
+
+  if (isStateUnchanged) return;
+
   chrome.runtime.sendMessage(
     { action: MESSAGE_ACTION.ACTION_GET_CURRENT_TAB_URL },
     (response) => {

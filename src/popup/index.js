@@ -8,7 +8,7 @@ import {
   MESSAGE_ACTION,
   MESSAGES,
 } from "@/config/constant";
-import { formatDate, elements } from "@/utils";
+import { formatDate, elements, debounce } from "@/utils";
 
 document.addEventListener("DOMContentLoaded", () => {
   const toggleHighlightSwitch = elements.TOGGLE_HIGHLIGHT_SWITCH;
@@ -217,7 +217,7 @@ document.addEventListener("DOMContentLoaded", () => {
     errorMessageSpan.innerHTML = "";
   });
 
-  confirmSaveButton.addEventListener("click", async () => {
+  const handleSave = async () => {
     const customName = customNameInput.value.trim();
     const errorMessageSpan = document.querySelector(".error-message");
     errorMessageSpan.innerHTML = "";
@@ -245,7 +245,9 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       alert(MESSAGES.SAVE_FAILED_ALERT);
     }
-  });
+  };
+
+  confirmSaveButton.addEventListener("click", debounce(handleSave, 500));
 
   const checkDuplicateName = async (customName) => {
     try {
@@ -382,14 +384,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           const tabId = tabs[0].id;
-
-          chrome.tabs.reload(tabId, () => {
-            setTimeout(() => {
-              chrome.tabs.sendMessage(tabId, {
-                action: MESSAGE_ACTION.ACTION_APPLY_SAVED_DOM,
-                elementChanges: layer.elementChanges,
-              });
-            }, 500);
+          chrome.tabs.sendMessage(tabId, {
+            action: MESSAGE_ACTION.ACTION_APPLY_SAVED_DOM,
+            elementChanges: layer.elementChanges,
           });
         });
       });
@@ -468,7 +465,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 
-  confirmDeleteButton.addEventListener("click", async () => {
+  const handleDelete = async () => {
     if (!appState.layerToDelete) return;
 
     try {
@@ -479,7 +476,9 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error(MESSAGES.DELETE_FAILED_ALERT, error);
       alert(MESSAGES.DELETE_FAILED_ALERT);
     }
-  });
+  };
+
+  confirmDeleteButton.addEventListener("click", debounce(handleDelete, 500));
 
   cancelDeleteButton.addEventListener("click", () => {
     deleteConfirmPopup.style.display = STYLE.STYLE_NONE;

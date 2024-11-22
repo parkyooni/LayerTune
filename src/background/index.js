@@ -4,19 +4,14 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({ layerHighlightState: {} });
 });
 
-chrome.commands.onCommand.addListener((command) => {
-  chrome.storage.local.get(
-    "layerHighlightActive",
-    ({ layerHighlightActive }) => {
-      if (layerHighlightActive) {
-        const action =
-          command === "undo"
-            ? "undoAction"
-            : MESSAGE_ACTION.ACTION_SAVE_DOM_CHANGES;
-        executeContentScript(action);
-      }
-    }
-  );
+chrome.storage.local.get("layerHighlightActive", ({ layerHighlightActive }) => {
+  if (layerHighlightActive) {
+    const action =
+      command === "undo"
+        ? "undoAction"
+        : MESSAGE_ACTION.ACTION_SAVE_DOM_CHANGES;
+    executeContentScript(action);
+  }
 });
 
 chrome.tabs.onActivated.addListener(({ tabId }) =>

@@ -48,7 +48,7 @@ export default defineConfig({
             css: ["src/styles/index.scss"],
           },
         ],
-        permissions: ["scripting", "tabs", "identity", "storage", "commands"],
+        permissions: ["scripting", "tabs", "identity", "storage"],
         host_permissions: [
           "<all_urls>",
           "https://specific-site.com/*",
